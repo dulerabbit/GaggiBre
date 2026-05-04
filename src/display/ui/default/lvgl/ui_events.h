@@ -47,6 +47,12 @@ void onGrindScreenLoad(lv_event_t *e);
 void onGrindToggle(lv_event_t *e);
 void onGrindTimeRaise(lv_event_t *e);
 void onGrindTimeLower(lv_event_t *e);
+void onManualBrewScreenLoad(lv_event_t *e);
+void onManualBrewAdjust(lv_event_t *e);
+void onManualBrewAdjustTemp(lv_event_t *e);
+void onManualBrewAdjustPressure(lv_event_t *e);
+void onManualBrewSave(lv_event_t *e);
+void onManualBrewDiscard(lv_event_t *e);
 
 #ifdef __cplusplus
 } /*extern "C"*/

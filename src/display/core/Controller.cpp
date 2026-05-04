@@ -371,6 +371,15 @@ bool Controller::isVolumetricAvailable() const {
 #endif
 }
 
+static float getProfileManualPressureTarget(const Profile &profile, float pressureScaling) {
+    for (const auto &phase : profile.phases) {
+        if (phase.phase == PhaseType::PHASE_TYPE_BREW && !phase.pumpIsSimple) {
+            return constrain(phase.pumpAdvanced.pressure, 0.0f, pressureScaling);
+        }
+    }
+    return constrain(9.0f, 0.0f, pressureScaling);
+}
+
 void Controller::autotune(int testTime, int samples) {
     if (isActive() || !isReady()) {
         return;
@@ -398,6 +407,7 @@ float Controller::getTargetTemp() const {
     Process *proc = currentProcess;
     switch (mode) {
     case MODE_BREW:
+    case MODE_MANUAL:
     case MODE_GRIND:
         if (proc != nullptr && proc->isActive() && proc->getType() == MODE_BREW) {
             auto brewProcess = static_cast<BrewProcess *>(proc);
@@ -417,6 +427,7 @@ void Controller::setTargetTemp(float temperature) {
     pluginManager->trigger("boiler:targetTemperature:change", "value", temperature);
     switch (mode) {
     case MODE_BREW:
+    case MODE_MANUAL:
     case MODE_GRIND:
         profileManager->getSelectedProfile().temperature = temperature;
         break;
@@ -428,6 +439,25 @@ void Controller::setTargetTemp(float temperature) {
         break;
     default:;
     }
+    updateLastAction();
+}
+
+void Controller::setManualPressureTarget(float pressure) {
+    const float scaling = settings.getPressureScaling();
+    const float clamped = constrain(pressure, 0.0f, scaling);
+    Profile &profile = profileManager->getSelectedProfile();
+    for (auto &phase : profile.phases) {
+        if (phase.phase == PhaseType::PHASE_TYPE_BREW) {
+            phase.pumpIsSimple = false;
+            phase.pumpAdvanced.target = PumpTarget::PUMP_TARGET_PRESSURE;
+            phase.pumpAdvanced.pressure = clamped;
+            if (phase.pumpAdvanced.flow <= 0.0f) {
+                phase.pumpAdvanced.flow = 0.0f;
+            }
+        }
+    }
+
+    manualPressureTarget = clamped;
     updateLastAction();
 }
 
@@ -525,6 +555,9 @@ void Controller::updateControl() {
     bool active = isActive();
 
     float targetTemp = getTargetTemp();
+    if (active && mode == MODE_MANUAL && proc != nullptr && proc->getType() == MODE_BREW) {
+        targetTemp = profileManager->getSelectedProfile().temperature;
+    }
     if (targetTemp > .0f) {
         targetTemp = targetTemp + static_cast<float>(settings.getTemperatureOffset());
     }
@@ -546,6 +579,13 @@ void Controller::updateControl() {
         }
         if (proc->getType() == MODE_BREW) {
             auto *brewProcess = static_cast<BrewProcess *>(proc);
+            if (mode == MODE_MANUAL) {
+                clientController.sendAdvancedOutputControl(brewProcess->isRelayActive(), targetTemp, true, manualPressureTarget,
+                                                           0.0f);
+                targetPressure = manualPressureTarget;
+                targetFlow = 0.0f;
+                return;
+            }
             if (brewProcess->isAdvancedPump()) {
                 clientController.sendAdvancedOutputControl(brewProcess->isRelayActive(), targetTemp,
                                                            brewProcess->getPumpTarget() == PumpTarget::PUMP_TARGET_PRESSURE,
@@ -578,8 +618,12 @@ void Controller::activate() {
         }
     }
     delay(200);
+    if (mode == MODE_MANUAL) {
+        manualPressureTarget = getProfileManualPressureTarget(profileManager->getSelectedProfile(), settings.getPressureScaling());
+    }
     switch (mode) {
     case MODE_BREW:
+    case MODE_MANUAL:
         startProcess(new BrewProcess(profileManager->getSelectedProfile(),
                                      profileManager->getSelectedProfile().isVolumetric() && isVolumetricAvailable()
                                          ? ProcessTarget::VOLUMETRIC
@@ -669,6 +713,9 @@ int Controller::getMode() const { return mode; }
 void Controller::setMode(int newMode) {
     Event modeEvent = pluginManager->trigger("controller:mode:change", "value", newMode);
     mode = modeEvent.getInt("value");
+    if (mode == MODE_MANUAL) {
+        manualPressureTarget = getProfileManualPressureTarget(profileManager->getSelectedProfile(), settings.getPressureScaling());
+    }
     steamReady = false;
 
     updateLastAction();
@@ -748,6 +795,7 @@ void Controller::handleBrewButton(int brewButtonStatus) {
             deactivateStandby();
             break;
         case MODE_BREW:
+        case MODE_MANUAL:
             if (!isActive()) {
                 deactivateStandby();
                 clear();

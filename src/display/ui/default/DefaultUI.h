@@ -65,6 +65,7 @@ class DefaultUI {
 
     void updateStandbyScreen();
     void updateStatusScreen() const;
+    void updateManualBrewScreen();
 
     void adjustDials(lv_obj_t *dials);
     void adjustTempTarget(lv_obj_t *dials);
@@ -76,6 +77,8 @@ class DefaultUI {
     bool isTempHistoryInitialized = false;
     int isTemperatureStable = false;
     unsigned long lastTempLog = 0;
+    unsigned long lastManualChartUpdate = 0;
+    bool lastManualBrewActive = false;
 
     void updateTempHistory();
     void updateTempStableFlag();
@@ -104,6 +107,7 @@ class DefaultUI {
     int grindActive = false;
     int active = false;
     int smartGrindActive = false;
+    int secondaryAction = SECONDARY_ACTION_MANUAL_BREW;
     int grindAvailable = false;
     int initialized = false;
 
@@ -122,6 +126,7 @@ class DefaultUI {
     float grindVolume = 0.0f;
     int pressureAvailable = 0;
     float pressure = 0.0f;
+    float manualPressureTarget = 0.0f;
     int pressureScaling = DEFAULT_PRESSURE_SCALING;
     int heatingFlash = 0;
     double bluetoothWeight = 0.0;

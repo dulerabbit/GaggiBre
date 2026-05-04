@@ -10,6 +10,60 @@
 
 // Flag to track if volumetric hold was triggered
 static bool volumetricHoldTriggered = false;
+static int manualTempPixels = 0;
+static int manualPressurePixels = 0;
+static constexpr int MANUAL_TEMP_PIXELS_PER_STEP = 18;
+static constexpr int MANUAL_PRESSURE_PIXELS_PER_STEP = 8;
+static constexpr float MANUAL_PRESSURE_STEP = 0.2f;
+static Profile manualProfileBackup{};
+static bool manualProfileBackupValid = false;
+
+static void applyManualTempTarget(float temperature);
+static float getManualPressureTarget();
+static void setManualPressureTarget(float targetPressure);
+
+static void applyManualTempTarget(float temperature) {
+    controller.setTargetTemp(temperature);
+}
+
+static void backupManualProfile() {
+    manualProfileBackup = controller.getProfileManager()->getSelectedProfile();
+    manualProfileBackupValid = true;
+}
+
+static void restoreManualProfile() {
+    if (!manualProfileBackupValid) {
+        return;
+    }
+
+    controller.getProfileManager()->getSelectedProfile() = manualProfileBackup;
+    manualProfileBackupValid = false;
+    manualTempPixels = 0;
+    manualPressurePixels = 0;
+    controller.getUI()->markDirty();
+}
+
+static float getManualPressureTarget() {
+    const auto &profile = controller.getProfileManager()->getSelectedProfile();
+    for (const auto &phase : profile.phases) {
+        if (phase.phase == PhaseType::PHASE_TYPE_BREW && !phase.pumpIsSimple) {
+            return phase.pumpAdvanced.pressure;
+        }
+    }
+
+    const float scaling = controller.getSettings().getPressureScaling();
+    const float fallback = controller.getCurrentPressure() > 0.0f ? controller.getCurrentPressure() : 0.0f;
+    return constrain(fallback, 0.0f, scaling);
+}
+
+static void setManualPressureTarget(float targetPressure) {
+    const float scaling = controller.getSettings().getPressureScaling();
+    const float clamped = constrain(targetPressure, 0.0f, scaling);
+    controller.setManualPressureTarget(clamped);
+
+    controller.getUI()->markProfileDirty();
+    controller.getUI()->markDirty();
+}
 
 void onBrewCancel(lv_event_t *e) {
     controller.deactivate();
@@ -81,14 +135,131 @@ void onGrindTimeLower(lv_event_t *e) { controller.lowerGrindTarget(); }
 void onGrindTimeRaise(lv_event_t *e) { controller.raiseGrindTarget(); }
 
 void onMenuClick(lv_event_t *e) {
+    if (controller.getMode() == MODE_MANUAL) {
+        restoreManualProfile();
+    }
     controller.deactivate();
     controller.setMode(MODE_BREW);
     controller.getUI()->changeScreen(&ui_MenuScreen, &ui_MenuScreen_screen_init);
 }
 
+void onManualBrewScreenLoad(lv_event_t *e) {
+    lv_obj_set_ext_click_area(ui_ManualBrewScreen_startButton, 25);
+    lv_obj_set_ext_click_area(ui_ManualBrewScreen_backButton, 70);
+    if (uic_ManualBrewScreen_dials_tempText) {
+        // Remove visible tile contrast around temp text on the true-black manual screen.
+        lv_obj_set_style_bg_color(uic_ManualBrewScreen_dials_tempText, lv_color_hex(0x000000),
+                                  LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(uic_ManualBrewScreen_dials_tempText, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+    if (uic_ManualBrewScreen_dials_tempGauge) {
+        lv_obj_set_ext_click_area(uic_ManualBrewScreen_dials_tempGauge, 45);
+    }
+    if (uic_ManualBrewScreen_dials_pressureGauge) {
+        lv_obj_set_ext_click_area(uic_ManualBrewScreen_dials_pressureGauge, 45);
+    }
+}
+
+void onManualBrewAdjust(lv_event_t *e) {
+    lv_obj_t *target = lv_event_get_target(e);
+    if (target == ui_ManualBrewScreen_pressureZone) {
+        onManualBrewAdjustPressure(e);
+        return;
+    }
+    onManualBrewAdjustTemp(e);
+}
+
+void onManualBrewAdjustTemp(lv_event_t *e) {
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    if (event_code == LV_EVENT_RELEASED || event_code == LV_EVENT_PRESS_LOST) {
+        manualTempPixels = 0;
+        return;
+    }
+
+    if (event_code == LV_EVENT_PRESSED) {
+        manualTempPixels = 0;
+        return;
+    }
+
+    if (event_code != LV_EVENT_PRESSING) {
+        return;
+    }
+
+    lv_indev_t *indev = lv_indev_get_act();
+    if (indev == nullptr) {
+        return;
+    }
+
+    lv_point_t vector;
+    lv_indev_get_vect(indev, &vector);
+    manualTempPixels += -vector.y;
+
+    while (abs(manualTempPixels) >= MANUAL_TEMP_PIXELS_PER_STEP) {
+        const float step = manualTempPixels > 0 ? 1.0f : -1.0f;
+        const float target =
+            constrain(controller.getTargetTemp() + step, static_cast<float>(MIN_TEMP), static_cast<float>(MAX_TEMP));
+        applyManualTempTarget(target);
+        manualTempPixels += manualTempPixels > 0 ? -MANUAL_TEMP_PIXELS_PER_STEP : MANUAL_TEMP_PIXELS_PER_STEP;
+    }
+
+    controller.getUI()->markDirty();
+}
+
+void onManualBrewAdjustPressure(lv_event_t *e) {
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    if (event_code == LV_EVENT_RELEASED || event_code == LV_EVENT_PRESS_LOST) {
+        manualPressurePixels = 0;
+        return;
+    }
+
+    if (event_code == LV_EVENT_PRESSED) {
+        manualPressurePixels = 0;
+        return;
+    }
+
+    if (event_code != LV_EVENT_PRESSING) {
+        return;
+    }
+
+    lv_indev_t *indev = lv_indev_get_act();
+    if (indev == nullptr) {
+        return;
+    }
+
+    lv_point_t vector;
+    lv_indev_get_vect(indev, &vector);
+    manualPressurePixels += -vector.y;
+
+    while (abs(manualPressurePixels) >= MANUAL_PRESSURE_PIXELS_PER_STEP) {
+        const float step = manualPressurePixels > 0 ? MANUAL_PRESSURE_STEP : -MANUAL_PRESSURE_STEP;
+        setManualPressureTarget(getManualPressureTarget() + step);
+        manualPressurePixels +=
+            manualPressurePixels > 0 ? -MANUAL_PRESSURE_PIXELS_PER_STEP : MANUAL_PRESSURE_PIXELS_PER_STEP;
+    }
+
+    controller.getUI()->markDirty();
+}
+
 void onGrindScreen(lv_event_t *e) {
-    controller.getUI()->changeScreen(&ui_GrindScreen, &ui_GrindScreen_screen_init);
-    controller.setMode(MODE_GRIND);
+    const int secondaryAction = controller.getSettings().getSecondaryAction();
+    if (secondaryAction == SECONDARY_ACTION_NONE) {
+        return;
+    }
+
+    if (secondaryAction == SECONDARY_ACTION_GRIND) {
+        controller.getUI()->changeScreen(&ui_GrindScreen, &ui_GrindScreen_screen_init);
+        controller.setMode(MODE_GRIND);
+        return;
+    }
+
+    backupManualProfile();
+    controller.getUI()->changeScreen(&ui_ManualBrewScreen, &ui_ManualBrewScreen_screen_init);
+    controller.deactivate();
+    controller.setMode(MODE_MANUAL);
+    controller.setManualPressureTarget(0.0f);
+    controller.getUI()->markDirty();
 }
 
 void onVolumetricClick(lv_event_t *e) {}
@@ -117,6 +288,24 @@ void onProfileScreenLoad(lv_event_t *e) {
 }
 
 void onMenuScreenLoad(lv_event_t *e) {
+    const int secondaryAction = controller.getSettings().getSecondaryAction();
+    if (ui_MenuScreen_grindIcon) {
+        if (secondaryAction == SECONDARY_ACTION_MANUAL_BREW) {
+            lv_img_set_src(ui_MenuScreen_grindIcon, &ui_img_manual_pressure_80x80);
+            lv_img_set_zoom(ui_MenuScreen_grindIcon, 256);
+            lv_obj_set_style_img_recolor(ui_MenuScreen_grindIcon, lv_color_hex(0x2CA4F6), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_img_recolor_opa(ui_MenuScreen_grindIcon, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+        } else {
+            lv_img_set_src(ui_MenuScreen_grindIcon, &ui_img_363557387);
+            lv_img_set_zoom(ui_MenuScreen_grindIcon, 256);
+            ui_object_set_themeable_style_property(ui_MenuScreen_grindIcon, LV_PART_MAIN | LV_STATE_DEFAULT,
+                                                   LV_STYLE_IMG_RECOLOR, _ui_theme_color_NiceWhite);
+            ui_object_set_themeable_style_property(ui_MenuScreen_grindIcon, LV_PART_MAIN | LV_STATE_DEFAULT,
+                                                   LV_STYLE_IMG_RECOLOR_OPA, _ui_theme_alpha_NiceWhite);
+        }
+        lv_obj_center(ui_MenuScreen_grindIcon);
+    }
+
     lv_obj_set_ext_click_area(ui_MenuScreen_btnBrew, 15);
     lv_obj_set_ext_click_area(ui_MenuScreen_btnSteam, 15);
     lv_obj_set_ext_click_area(ui_MenuScreen_waterBtn, 15);
@@ -132,6 +321,7 @@ void onBrewScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_BrewScreen_downDurationButton, 15);
     lv_obj_set_ext_click_area(ui_BrewScreen_upTempButton, 15);
     lv_obj_set_ext_click_area(ui_BrewScreen_downTempButton, 15);
+    lv_obj_set_ext_click_area(ui_BrewScreen_tempContainer, 20);
 }
 
 void onSimpleProcessScreenLoad(lv_event_t *e) {
@@ -139,6 +329,7 @@ void onSimpleProcessScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_SimpleProcessScreen_upTempButton, 40);
     lv_obj_set_ext_click_area(ui_SimpleProcessScreen_goButton, 25);
     lv_obj_set_ext_click_area(ui_SimpleProcessScreen_ImgButton6, 20);
+    lv_obj_set_ext_click_area(ui_SimpleProcessScreen_targetTemp, 60);
 }
 
 void onStatusScreenLoad(lv_event_t *e) {
@@ -178,3 +369,33 @@ void onVolumetricHold(lv_event_t *e) {
 }
 
 void onVolumetricDelete(lv_event_t *e) { controller.getUI()->onVolumetricDelete(); }
+
+void onManualBrewSave(lv_event_t *e) {
+    if (!ui_ManualBrewScreen_savePanel) return;
+
+    // Generate "Manual N" name, finding first unused N
+    auto *pm = controller.getProfileManager();
+    auto uuids = pm->listProfiles();
+    int maxN = 0;
+    for (auto const &uuid : uuids) {
+        Profile p;
+        if (pm->loadProfile(uuid, p)) {
+            if (p.label.startsWith("Manual ")) {
+                int n = p.label.substring(7).toInt();
+                if (n > maxN) maxN = n;
+            }
+        }
+    }
+
+    Profile newProfile = controller.getProfileManager()->getSelectedProfile();
+    newProfile.id = "";  // Force new UUID on save
+    newProfile.label = "Manual " + String(maxN + 1);
+    pm->saveProfile(newProfile);
+
+    lv_obj_add_flag(ui_ManualBrewScreen_savePanel, LV_OBJ_FLAG_HIDDEN);
+}
+
+void onManualBrewDiscard(lv_event_t *e) {
+    if (ui_ManualBrewScreen_savePanel)
+        lv_obj_add_flag(ui_ManualBrewScreen_savePanel, LV_OBJ_FLAG_HIDDEN);
+}

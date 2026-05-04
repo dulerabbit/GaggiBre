@@ -4,6 +4,7 @@ SET(SOURCES components/ui_comp_dials.c
     screens/ui_ProfileScreen.c
     screens/ui_MenuScreen.c
     screens/ui_BrewScreen.c
+    screens/ui_ManualBrewScreen.c
     screens/ui_SimpleProcessScreen.c
     screens/ui_StatusScreen.c
     screens/ui_GrindScreen.c

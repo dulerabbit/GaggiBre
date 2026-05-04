@@ -103,7 +103,12 @@ Settings::Settings() {
     sunriseExtBrightness = preferences.getInt("sr_exb", 255);
     emptyTankDistance = preferences.getInt("sr_ed", 200);
     fullTankDistance = preferences.getInt("sr_fd", 50);
-    altRelayFunction = preferences.getInt("alt_relay", ALT_RELAY_GRIND);
+    altRelayFunction = preferences.getInt("alt_relay", ALT_RELAY_NONE);
+    secondaryAction = preferences.getInt("sec_act", SECONDARY_ACTION_MANUAL_BREW);
+    if (!preferences.isKey("sec_act")) {
+        secondaryAction = (altRelayFunction == ALT_RELAY_GRIND) ? SECONDARY_ACTION_GRIND : SECONDARY_ACTION_MANUAL_BREW;
+    }
+    altRelayFunction = (secondaryAction == SECONDARY_ACTION_GRIND) ? ALT_RELAY_GRIND : ALT_RELAY_NONE;
 
     preferences.end();
 
@@ -409,7 +414,21 @@ void Settings::setFullTankDistance(int full_tank_distance) {
     save();
 }
 
-void Settings::setAltRelayFunction(int alt_relay_function) { altRelayFunction = alt_relay_function; }
+void Settings::setAltRelayFunction(int alt_relay_function) {
+    altRelayFunction = alt_relay_function;
+    if (altRelayFunction == ALT_RELAY_GRIND) {
+        secondaryAction = SECONDARY_ACTION_GRIND;
+    } else if (secondaryAction == SECONDARY_ACTION_GRIND) {
+        secondaryAction = SECONDARY_ACTION_MANUAL_BREW;
+    }
+    save();
+}
+
+void Settings::setSecondaryAction(int secondary_action) {
+    secondaryAction = std::clamp(secondary_action, SECONDARY_ACTION_NONE, SECONDARY_ACTION_GRIND);
+    altRelayFunction = (secondaryAction == SECONDARY_ACTION_GRIND) ? ALT_RELAY_GRIND : ALT_RELAY_NONE;
+    save();
+}
 
 void Settings::setAutoWakeupEnabled(bool enabled) {
     autowakeupEnabled = enabled;
@@ -502,6 +521,7 @@ void Settings::doSave() {
     preferences.putInt("sr_ed", emptyTankDistance);
     preferences.putInt("sr_fd", fullTankDistance);
     preferences.putInt("alt_relay", altRelayFunction);
+    preferences.putInt("sec_act", secondaryAction);
 
     preferences.end();
 }

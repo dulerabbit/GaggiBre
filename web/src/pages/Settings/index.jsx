@@ -189,10 +189,10 @@ export function Settings() {
       const form = formRef.current;
       const formDataToSubmit = new FormData(form);
       formDataToSubmit.set('steamPumpPercentage', formData.steamPumpPercentage);
-      formDataToSubmit.set(
-        'altRelayFunction',
-        formData.altRelayFunction !== undefined ? formData.altRelayFunction : 1,
-      );
+      const secondaryAction =
+        formData.secondaryAction !== undefined ? Number(formData.secondaryAction) : 1;
+      formDataToSubmit.set('secondaryAction', secondaryAction);
+      formDataToSubmit.set('altRelayFunction', secondaryAction === 2 ? 1 : 0);
 
       // Combine PID and Kf into single PID string
       if (formData.pid && formData.kf !== undefined) {
@@ -743,21 +743,19 @@ export function Settings() {
               </div>
             )}
             <div className='form-control'>
-              <label htmlFor='altRelayFunction' className='mb-2 block text-sm font-medium'>
-                Alt Relay / SSR2 Function
+              <label htmlFor='secondaryAction' className='mb-2 block text-sm font-medium'>
+                Secondary Action (Main Menu)
               </label>
               <select
-                id='altRelayFunction'
-                name='altRelayFunction'
+                id='secondaryAction'
+                name='secondaryAction'
                 className='select select-bordered w-full'
-                value={formData.altRelayFunction ?? 1}
-                onChange={onChange('altRelayFunction')}
+                value={formData.secondaryAction ?? 1}
+                onChange={onChange('secondaryAction')}
               >
+                <option value={1}>Manual Brew</option>
+                <option value={2}>Grind</option>
                 <option value={0}>None</option>
-                <option value={1}>Grind</option>
-                <option value={2} disabled className='text-gray-400'>
-                  Steam Boiler (Coming Soon)
-                </option>
               </select>
             </div>
           </Card>

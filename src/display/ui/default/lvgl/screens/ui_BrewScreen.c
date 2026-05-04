@@ -372,7 +372,8 @@ void ui_BrewScreen_screen_init(void) {
     lv_obj_set_width(ui_BrewScreen_tempContainer, 360);
     lv_obj_set_height(ui_BrewScreen_tempContainer, 50);
     lv_obj_set_align(ui_BrewScreen_tempContainer, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_BrewScreen_tempContainer, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
+    lv_obj_clear_flag(ui_BrewScreen_tempContainer, LV_OBJ_FLAG_SCROLLABLE); /// Flags
+    lv_obj_add_flag(ui_BrewScreen_tempContainer, LV_OBJ_FLAG_CLICKABLE);
 
     ui_BrewScreen_targetTemp = lv_label_create(ui_BrewScreen_tempContainer);
     lv_obj_set_width(ui_BrewScreen_targetTemp, 90);

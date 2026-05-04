@@ -27,6 +27,7 @@ extern void ui_event_MenuScreen_waterBtn(lv_event_t *e);
 extern lv_obj_t *ui_MenuScreen_waterBtn;
 extern void ui_event_MenuScreen_grindBtn(lv_event_t *e);
 extern lv_obj_t *ui_MenuScreen_grindBtn;
+extern lv_obj_t *ui_MenuScreen_grindIcon;
 // CUSTOM VARIABLES
 extern lv_obj_t *uic_MenuScreen_dials_tempGauge;
 extern lv_obj_t *uic_MenuScreen_dials_tempTarget;

@@ -188,11 +188,10 @@ const ProcessControls = props => {
     },
   );
 
-  const isSmartGrindEnabled = settings?.smartGrindActive || false;
-  const altRelayFunction = settings?.altRelayFunction !== undefined ? settings.altRelayFunction : 1;
+  const secondaryAction = settings?.secondaryAction !== undefined ? Number(settings.secondaryAction) : 1;
 
-  // Show grind elements if SmartGrind is enabled OR if Alt Relay is set to grind
-  const isGrindAvailable = isSmartGrindEnabled || altRelayFunction === 1; // ALT_RELAY_GRIND = 1
+  // Grind tab is only available when the selected secondary action is Grind.
+  const isGrindAvailable = secondaryAction === 2;
 
   // If currently in grind mode, always show it even if both SmartGrind is disabled and Alt Relay is not grind
   // to avoid confusion for users who might be in grind mode when settings change

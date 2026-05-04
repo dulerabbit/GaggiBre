@@ -14,6 +14,29 @@ void ProfileManager::setup() {
         migrate();
         loadSelectedProfile(selectedProfile);
     }
+
+    // Never boot into a Manual profile; prefer a stock/default profile for startup safety.
+    if (selectedProfile.label.startsWith("Manual")) {
+        String fallbackId = "";
+        for (const auto &id : profiles) {
+            Profile candidate;
+            if (!loadProfile(id, candidate)) {
+                continue;
+            }
+            if (candidate.label == "Default") {
+                fallbackId = candidate.id;
+                break;
+            }
+            if (!candidate.label.startsWith("Manual") && fallbackId.isEmpty()) {
+                fallbackId = candidate.id;
+            }
+        }
+        if (!fallbackId.isEmpty()) {
+            selectProfile(fallbackId);
+            loadSelectedProfile(selectedProfile);
+        }
+    }
+
     _settings.setFavoritedProfiles(getFavoritedProfiles(true));
 }
 

@@ -540,8 +540,11 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setEmptyTankDistance(request->arg("emptyTankDistance").toInt());
             if (request->hasArg("fullTankDistance"))
                 settings->setFullTankDistance(request->arg("fullTankDistance").toInt());
-            if (request->hasArg("altRelayFunction"))
+            if (request->hasArg("secondaryAction")) {
+                settings->setSecondaryAction(request->arg("secondaryAction").toInt());
+            } else if (request->hasArg("altRelayFunction")) {
                 settings->setAltRelayFunction(request->arg("altRelayFunction").toInt());
+            }
             settings->setAutoWakeupEnabled(request->hasArg("autowakeupEnabled"));
             if (request->hasArg("autowakeupSchedules")) {
                 // Handle schedule format with days
@@ -639,6 +642,7 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["emptyTankDistance"] = settings.getEmptyTankDistance();
     doc["fullTankDistance"] = settings.getFullTankDistance();
     doc["altRelayFunction"] = settings.getAltRelayFunction();
+    doc["secondaryAction"] = settings.getSecondaryAction();
     // Add auto-wakeup settings to response
     doc["autowakeupEnabled"] = settings.isAutoWakeupEnabled();
 

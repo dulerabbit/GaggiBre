@@ -32,6 +32,7 @@ extern "C" {
 ///////////////////// SCREENS ////////////////////
 #include "screens/ui_BrewScreen.h"
 #include "screens/ui_GrindScreen.h"
+#include "screens/ui_ManualBrewScreen.h"
 #include "screens/ui_MenuScreen.h"
 #include "screens/ui_ProfileScreen.h"
 #include "screens/ui_SimpleProcessScreen.h"
@@ -55,6 +56,7 @@ LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
 LV_IMG_DECLARE(ui_img_1455708189);    // assets/pressure-filled.png
 LV_IMG_DECLARE(ui_img_1951499226);    // assets/thermometer-half-40x40.png
 LV_IMG_DECLARE(ui_img_1220767159);    // assets/tachometer-fast-40x40.png
+LV_IMG_DECLARE(ui_img_manual_pressure_80x80); // assets/manual-pressure-80x80.png
 LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
 LV_IMG_DECLARE(ui_img_489054950);     // assets/gauge-fill.png
 LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
