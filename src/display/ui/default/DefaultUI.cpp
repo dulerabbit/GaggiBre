@@ -36,6 +36,73 @@ static float getManualProfilePressureTarget(const Profile &profile, float pressu
     return constrain(9.0f, 0.0f, pressureScaling);
 }
 
+static int parseManualProfileNumber(const String &label) {
+    if (label == "Manual") {
+        return 1;
+    }
+
+    if (!label.startsWith("Manual ")) {
+        return 0;
+    }
+
+    const String numberPart = label.substring(7);
+    if (numberPart.isEmpty()) {
+        return 0;
+    }
+
+    for (size_t i = 0; i < numberPart.length(); ++i) {
+        if (numberPart[i] < '0' || numberPart[i] > '9') {
+            return 0;
+        }
+    }
+
+    const int parsed = numberPart.toInt();
+    return parsed > 0 ? parsed : 0;
+}
+
+static int findNextManualProfileNumber(ProfileManager *pm) {
+    if (!pm) {
+        return 1;
+    }
+
+    std::vector<int> usedNumbers;
+    usedNumbers.reserve(16);
+    int maxNumber = 0;
+
+    const auto uuids = pm->listProfiles();
+    for (const auto &uuid : uuids) {
+        Profile p;
+        if (!pm->loadProfile(uuid, p)) {
+            continue;
+        }
+
+        const int number = parseManualProfileNumber(p.label);
+        if (number <= 0) {
+            continue;
+        }
+
+        usedNumbers.push_back(number);
+        if (number > maxNumber) {
+            maxNumber = number;
+        }
+    }
+
+    for (int candidate = 1; candidate <= maxNumber + 1; ++candidate) {
+        bool taken = false;
+        for (const int used : usedNumbers) {
+            if (used == candidate) {
+                taken = true;
+                break;
+            }
+        }
+        if (!taken) {
+            return candidate;
+        }
+    }
+
+    return maxNumber + 1;
+}
+
 void DefaultUI::updateTempHistory() {
     if (currentTemp > 0) {
         tempHistory[tempHistoryIndex] = currentTemp;
@@ -1035,21 +1102,10 @@ void DefaultUI::updateManualBrewScreen() {
 
     // Detect transition: active -> inactive = shot just finished, show save panel
     if (lastManualBrewActive && !isActive && ui_ManualBrewScreen_savePanel) {
-        // Generate save name to display
-        auto *pm = controller->getProfileManager();
-        auto uuids = pm->listProfiles();
-        int maxN = 0;
-        for (auto const &uuid : uuids) {
-            Profile p;
-            if (pm->loadProfile(uuid, p)) {
-                if (p.label.startsWith("Manual ")) {
-                    int n = p.label.substring(7).toInt();
-                    if (n > maxN) maxN = n;
-                }
-            }
-        }
         if (ui_ManualBrewScreen_saveNameLabel) {
-            lv_label_set_text_fmt(ui_ManualBrewScreen_saveNameLabel, "Manual %d", maxN + 1);
+            const int nextNumber = findNextManualProfileNumber(profileManager);
+            String displayName = "Manual " + String(nextNumber);
+            lv_label_set_text(ui_ManualBrewScreen_saveNameLabel, displayName.c_str());
         }
         lv_obj_clear_flag(ui_ManualBrewScreen_savePanel, LV_OBJ_FLAG_HIDDEN);
     }

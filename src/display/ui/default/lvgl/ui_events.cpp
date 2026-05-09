@@ -17,10 +17,146 @@ static constexpr int MANUAL_PRESSURE_PIXELS_PER_STEP = 8;
 static constexpr float MANUAL_PRESSURE_STEP = 0.2f;
 static Profile manualProfileBackup{};
 static bool manualProfileBackupValid = false;
+static uint32_t manualShotStartMs = 0;
+static uint32_t manualShotDurationMs = 0;
+static bool manualShotInProgress = false;
+static std::vector<std::pair<uint32_t, float>> manualPressureTimeline;
+static constexpr size_t MANUAL_PROFILE_MAX_STEPS = 12;
 
 static void applyManualTempTarget(float temperature);
 static float getManualPressureTarget();
 static void setManualPressureTarget(float targetPressure);
+
+static std::vector<std::pair<uint32_t, float>> compressManualPressureTimeline(
+    const std::vector<std::pair<uint32_t, float>> &timeline) {
+    if (timeline.size() <= 2) {
+        return timeline;
+    }
+
+    // First pass: collapse transient ramp points that lie on the same directional move.
+    std::vector<std::pair<uint32_t, float>> reduced;
+    reduced.reserve(timeline.size());
+    reduced.push_back(timeline.front());
+
+    for (size_t i = 1; i + 1 < timeline.size(); ++i) {
+        const auto &prev = reduced.back();
+        const auto &curr = timeline[i];
+        const auto &next = timeline[i + 1];
+
+        const float d1 = curr.second - prev.second;
+        const float d2 = next.second - curr.second;
+        const bool sameDirection = (d1 == 0.0f || d2 == 0.0f || (d1 > 0.0f && d2 > 0.0f) || (d1 < 0.0f && d2 < 0.0f));
+
+        // Treat quick intermediate updates as part of the same sweep gesture.
+        const bool shortTransient = (curr.first - prev.first) < 1200 && fabsf(curr.second - prev.second) < 0.8f;
+
+        // Drop near-collinear points between previous kept point and next point.
+        bool nearLinear = false;
+        if (next.first > prev.first) {
+            const float t = static_cast<float>(curr.first - prev.first) / static_cast<float>(next.first - prev.first);
+            const float interpolated = prev.second + (next.second - prev.second) * t;
+            nearLinear = fabsf(curr.second - interpolated) < 0.25f;
+        }
+
+        if (sameDirection && (shortTransient || nearLinear)) {
+            continue;
+        }
+
+        reduced.push_back(curr);
+    }
+
+    reduced.push_back(timeline.back());
+
+    if (reduced.size() <= MANUAL_PROFILE_MAX_STEPS) {
+        return reduced;
+    }
+
+    // Second pass: hard-cap to MANUAL_PROFILE_MAX_STEPS while preserving start/end and overall shape.
+    std::vector<std::pair<uint32_t, float>> capped;
+    capped.reserve(MANUAL_PROFILE_MAX_STEPS);
+    capped.push_back(reduced.front());
+
+    const size_t lastIndex = reduced.size() - 1;
+    size_t lastAddedIndex = 0;
+    for (size_t k = 1; k + 1 < MANUAL_PROFILE_MAX_STEPS; ++k) {
+        size_t idx = (k * lastIndex) / (MANUAL_PROFILE_MAX_STEPS - 1);
+        if (idx <= lastAddedIndex) {
+            idx = std::min(lastIndex - 1, idx + 1);
+        }
+        capped.push_back(reduced[idx]);
+        lastAddedIndex = idx;
+    }
+
+    if (capped.back() != reduced.back()) {
+        capped.push_back(reduced.back());
+    }
+
+    return capped;
+}
+
+static void recordManualPressurePoint(float pressure) {
+    if (!manualShotInProgress) {
+        return;
+    }
+
+    const uint32_t nowMs = millis();
+    const uint32_t elapsedMs = nowMs >= manualShotStartMs ? (nowMs - manualShotStartMs) : 0;
+
+    if (!manualPressureTimeline.empty()) {
+        const float lastPressure = manualPressureTimeline.back().second;
+        if (fabsf(lastPressure - pressure) < 0.01f) {
+            return;
+        }
+    }
+
+    manualPressureTimeline.emplace_back(elapsedMs, pressure);
+}
+
+static void applyManualTimelineToProfile(Profile &profile) {
+    if (manualPressureTimeline.empty()) {
+        return;
+    }
+
+    const auto timeline = compressManualPressureTimeline(manualPressureTimeline);
+    if (timeline.empty()) {
+        return;
+    }
+
+    const float scaling = controller.getSettings().getPressureScaling();
+    float shotDurationSec = static_cast<float>(manualShotDurationMs) / 1000.0f;
+    if (shotDurationSec < 0.5f) {
+        shotDurationSec = static_cast<float>((millis() >= manualShotStartMs) ? (millis() - manualShotStartMs) : 0) / 1000.0f;
+    }
+    shotDurationSec = std::max(0.5f, shotDurationSec);
+
+    std::vector<Phase> phases;
+    phases.reserve(timeline.size());
+
+    for (size_t i = 0; i < timeline.size(); ++i) {
+        const float startSec = static_cast<float>(timeline[i].first) / 1000.0f;
+        const float endSec = (i + 1 < timeline.size())
+                                 ? static_cast<float>(timeline[i + 1].first) / 1000.0f
+                                 : shotDurationSec;
+        const float duration = std::max(0.5f, endSec - startSec);
+
+        Phase phase{};
+        phase.name = (i == 0) ? "Manual Brew" : ("Manual Brew " + String(static_cast<int>(i + 1)));
+        phase.phase = PhaseType::PHASE_TYPE_BREW;
+        phase.valve = 1;
+        phase.duration = duration;
+        phase.pumpIsSimple = false;
+        phase.pumpAdvanced.target = PumpTarget::PUMP_TARGET_PRESSURE;
+        phase.pumpAdvanced.pressure = constrain(timeline[i].second, 0.0f, scaling);
+        phase.pumpAdvanced.flow = 0.0f;
+        phase.temperature = profile.temperature;
+        phase.transition = Transition{.type = TransitionType::INSTANT, .duration = 0.0f, .adaptive = false};
+        phases.push_back(phase);
+    }
+
+    if (!phases.empty()) {
+        profile.phases = std::move(phases);
+    }
+}
 
 static void applyManualTempTarget(float temperature) {
     controller.setTargetTemp(temperature);
@@ -56,10 +192,95 @@ static float getManualPressureTarget() {
     return constrain(fallback, 0.0f, scaling);
 }
 
+static int parseManualProfileNumber(const String &label) {
+    if (label == "Manual") {
+        return 1;
+    }
+
+    if (!label.startsWith("Manual ")) {
+        return 0;
+    }
+
+    const String numberPart = label.substring(7);
+    if (numberPart.isEmpty()) {
+        return 0;
+    }
+
+    for (size_t i = 0; i < numberPart.length(); ++i) {
+        if (numberPart[i] < '0' || numberPart[i] > '9') {
+            return 0;
+        }
+    }
+
+    const int parsed = numberPart.toInt();
+    return parsed > 0 ? parsed : 0;
+}
+
+// Find next available Manual N number for naming saved profiles.
+static int findNextManualProfileNumber() {
+    auto *pm = controller.getProfileManager();
+    if (!pm) return 1;
+
+    std::vector<int> usedNumbers;
+    usedNumbers.reserve(16);
+    int maxNumber = 0;
+    const auto uuids = pm->listProfiles();
+
+    for (const auto &uuid : uuids) {
+        Profile p;
+        if (!pm->loadProfile(uuid, p)) continue;
+
+        const int number = parseManualProfileNumber(p.label);
+        if (number <= 0) {
+            continue;
+        }
+
+        usedNumbers.push_back(number);
+        if (number > maxNumber) {
+            maxNumber = number;
+        }
+    }
+
+    for (int candidate = 1; candidate <= maxNumber + 1; ++candidate) {
+        bool taken = false;
+        for (const int used : usedNumbers) {
+            if (used == candidate) {
+                taken = true;
+                break;
+            }
+        }
+        if (!taken) {
+            return candidate;
+        }
+    }
+
+    return maxNumber + 1;
+}
+
 static void setManualPressureTarget(float targetPressure) {
     const float scaling = controller.getSettings().getPressureScaling();
     const float clamped = constrain(targetPressure, 0.0f, scaling);
     controller.setManualPressureTarget(clamped);
+    recordManualPressurePoint(clamped);
+
+    // Immediate display update for snappy pressure control response
+    if (ui_ManualBrewScreen_pressureTarget) {
+        const float displayPressure = std::round(clamped * 10.0f) / 10.0f;
+        char pressureTargetText[8];
+        std::snprintf(pressureTargetText, sizeof(pressureTargetText), "%.1f", displayPressure);
+        lv_label_set_text(ui_ManualBrewScreen_pressureTarget, pressureTargetText);
+    }
+    
+    if (uic_ManualBrewScreen_dials_pressureTarget) {
+        const double pct = 1.0 - static_cast<double>(clamped) / static_cast<double>(std::max(1, static_cast<int>(scaling)));
+        const double start = -62.0;
+        const double range = 124.0;
+        double angle = start + range - range * pct;
+        lv_img_set_angle(uic_ManualBrewScreen_dials_pressureTarget, angle * -10);
+        int x = static_cast<int>(std::cos(angle * M_PI / 180.0f) * 235.0);
+        int y = static_cast<int>(std::sin(angle * M_PI / 180.0f) * -235.0);
+        lv_obj_set_pos(uic_ManualBrewScreen_dials_pressureTarget, x, y);
+    }
 
     controller.getUI()->markProfileDirty();
     controller.getUI()->markDirty();
@@ -232,6 +453,31 @@ void onManualBrewAdjustPressure(lv_event_t *e) {
     lv_indev_get_vect(indev, &vector);
     manualPressurePixels += -vector.y;
 
+    // Calculate predicted pressure based on current accumulated pixels (immediate visual feedback)
+    const float scaling = controller.getSettings().getPressureScaling();
+    const float currentPressure = getManualPressureTarget();
+    const int predictedSteps = manualPressurePixels / MANUAL_PRESSURE_PIXELS_PER_STEP;
+    const float predictedPressure = constrain(currentPressure + (predictedSteps * MANUAL_PRESSURE_STEP), 0.0f, scaling);
+
+    // Show predicted pressure immediately on display while swiping
+    if (ui_ManualBrewScreen_pressureTarget) {
+        const float displayPressure = std::round(predictedPressure * 10.0f) / 10.0f;
+        char pressureTargetText[8];
+        std::snprintf(pressureTargetText, sizeof(pressureTargetText), "%.1f", displayPressure);
+        lv_label_set_text(ui_ManualBrewScreen_pressureTarget, pressureTargetText);
+    }
+
+    if (uic_ManualBrewScreen_dials_pressureTarget) {
+        const double pct = 1.0 - static_cast<double>(predictedPressure) / static_cast<double>(std::max(1, static_cast<int>(scaling)));
+        const double start = -62.0;
+        const double range = 124.0;
+        double angle = start + range - range * pct;
+        lv_img_set_angle(uic_ManualBrewScreen_dials_pressureTarget, angle * -10);
+        int x = static_cast<int>(std::cos(angle * M_PI / 180.0f) * 235.0);
+        int y = static_cast<int>(std::sin(angle * M_PI / 180.0f) * -235.0);
+        lv_obj_set_pos(uic_ManualBrewScreen_dials_pressureTarget, x, y);
+    }
+
     while (abs(manualPressurePixels) >= MANUAL_PRESSURE_PIXELS_PER_STEP) {
         const float step = manualPressurePixels > 0 ? MANUAL_PRESSURE_STEP : -MANUAL_PRESSURE_STEP;
         setManualPressureTarget(getManualPressureTarget() + step);
@@ -278,6 +524,32 @@ void onSimpleProcessToggle(lv_event_t *e) {
     if (controller.getMode() != MODE_STEAM) {
         controller.isActive() ? controller.deactivate() : controller.activate();
     }
+}
+
+void onManualBrewToggle(lv_event_t *e) {
+    if (controller.getMode() != MODE_MANUAL) {
+        controller.setMode(MODE_MANUAL);
+    }
+
+    if (controller.isActive()) {
+        controller.deactivate();
+        if (manualShotInProgress) {
+            manualShotDurationMs = (millis() >= manualShotStartMs) ? (millis() - manualShotStartMs) : 0;
+            manualShotInProgress = false;
+        }
+    } else {
+        if (ui_ManualBrewScreen_savePanel) {
+            lv_obj_add_flag(ui_ManualBrewScreen_savePanel, LV_OBJ_FLAG_HIDDEN);
+        }
+        controller.activate();
+        manualShotStartMs = millis();
+        manualShotDurationMs = 0;
+        manualShotInProgress = true;
+        manualPressureTimeline.clear();
+        recordManualPressurePoint(getManualPressureTarget());
+    }
+
+    controller.getUI()->markDirty();
 }
 
 void onProfileScreenLoad(lv_event_t *e) {
@@ -371,28 +643,51 @@ void onVolumetricHold(lv_event_t *e) {
 void onVolumetricDelete(lv_event_t *e) { controller.getUI()->onVolumetricDelete(); }
 
 void onManualBrewSave(lv_event_t *e) {
-    if (!ui_ManualBrewScreen_savePanel) return;
-
-    // Generate "Manual N" name, finding first unused N
-    auto *pm = controller.getProfileManager();
-    auto uuids = pm->listProfiles();
-    int maxN = 0;
-    for (auto const &uuid : uuids) {
-        Profile p;
-        if (pm->loadProfile(uuid, p)) {
-            if (p.label.startsWith("Manual ")) {
-                int n = p.label.substring(7).toInt();
-                if (n > maxN) maxN = n;
-            }
-        }
+    if (!ui_ManualBrewScreen_savePanel) {
+        return;
     }
 
-    Profile newProfile = controller.getProfileManager()->getSelectedProfile();
-    newProfile.id = "";  // Force new UUID on save
-    newProfile.label = "Manual " + String(maxN + 1);
-    pm->saveProfile(newProfile);
+    auto *pm = controller.getProfileManager();
+    if (!pm) {
+        Serial.println("ERROR: ProfileManager unavailable");
+        return;
+    }
 
-    lv_obj_add_flag(ui_ManualBrewScreen_savePanel, LV_OBJ_FLAG_HIDDEN);
+    // Reuse the number shown in the save panel to avoid expensive scans on click.
+    int nextNumber = 0;
+    if (ui_ManualBrewScreen_saveNameLabel) {
+        const char *labelText = lv_label_get_text(ui_ManualBrewScreen_saveNameLabel);
+        if (labelText != nullptr) {
+            nextNumber = parseManualProfileNumber(String(labelText));
+        }
+    }
+    if (nextNumber <= 0) {
+        nextNumber = findNextManualProfileNumber();
+    }
+
+    Serial.printf("Saving manual profile: Manual %d\n", nextNumber);
+    
+    Profile newProfile = pm->getSelectedProfile();
+    newProfile.id = ""; // Force new UUID on save
+    newProfile.label = "Manual " + String(nextNumber);
+    applyManualTimelineToProfile(newProfile);
+
+    const bool saved = pm->saveProfile(newProfile);
+    if (saved) {
+        auto profileOrder = controller.getSettings().getProfileOrder();
+        if (std::find(profileOrder.begin(), profileOrder.end(), newProfile.id) == profileOrder.end()) {
+            profileOrder.push_back(newProfile.id);
+            controller.getSettings().setProfileOrder(std::move(profileOrder));
+        }
+        pm->addFavoritedProfile(newProfile.id);
+        pm->selectProfile(newProfile.id);
+        Serial.printf("Profile saved successfully: %s (%s)\n", newProfile.label.c_str(), newProfile.id.c_str());
+        lv_obj_add_flag(ui_ManualBrewScreen_savePanel, LV_OBJ_FLAG_HIDDEN);
+        manualPressureTimeline.clear();
+        manualShotDurationMs = 0;
+    } else {
+        Serial.println("ERROR: Manual profile save failed");
+    }
 }
 
 void onManualBrewDiscard(lv_event_t *e) {

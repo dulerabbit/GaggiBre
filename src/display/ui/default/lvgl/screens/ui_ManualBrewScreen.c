@@ -55,7 +55,7 @@ void ui_event_ManualBrewScreen_backButton(lv_event_t *e) {
 }
 
 void ui_event_ManualBrewScreen_startButton(lv_event_t *e) {
-    if (lv_event_get_code(e) == LV_EVENT_CLICKED) onSimpleProcessToggle(e);
+    if (lv_event_get_code(e) == LV_EVENT_CLICKED) onManualBrewToggle(e);
 }
 
 void ui_event_ManualBrewScreen_tempZone(lv_event_t *e) { onManualBrewAdjustTemp(e); }

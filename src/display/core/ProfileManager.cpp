@@ -139,11 +139,14 @@ bool ProfileManager::saveProfile(Profile &profile) {
         isNew = true;
     }
 
-    ESP_LOGI("ProfileManager", "Saving profile %s", profile.id.c_str());
+    const String path = profilePath(profile.id);
+    ESP_LOGI("ProfileManager", "Saving profile %s -> %s", profile.id.c_str(), path.c_str());
 
-    File file = _fs->open(profilePath(profile.id), "w");
-    if (!file)
+    File file = _fs->open(path, "w");
+    if (!file) {
+        ESP_LOGE("ProfileManager", "Failed to open profile file for write: %s", path.c_str());
         return false;
+    }
 
     JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
@@ -151,6 +154,15 @@ bool ProfileManager::saveProfile(Profile &profile) {
 
     bool ok = serializeJson(doc, file) > 0;
     file.close();
+    if (!ok) {
+        ESP_LOGE("ProfileManager", "Failed to write profile %s", profile.id.c_str());
+        return false;
+    }
+    if (!_fs->exists(path)) {
+        ESP_LOGE("ProfileManager", "Profile file missing after write: %s", path.c_str());
+        return false;
+    }
+
     if (profile.id == selectedProfile.id) {
         selectedProfile = Profile{};
         loadSelectedProfile(selectedProfile);
