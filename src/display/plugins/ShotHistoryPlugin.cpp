@@ -153,6 +153,25 @@ void ShotHistoryPlugin::record() {
                     recordPhaseTransition(currentPhase, sampleCount);
                     lastRecordedPhase = currentPhase;
                 }
+
+                // Accumulate adaptive brew statistics
+                if (brewProcess->profile.adaptiveBrew &&
+                    adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                    const auto decision = controller->getLastAdaptiveDecision();
+                    if (decision.confidence > 0.0F || adaptiveSampleCount > 0) {
+                        adaptiveSampleCount++;
+                        adaptiveCorrectionSum += decision.correctionApplied;
+                        const float absCorr = fabsf(decision.correctionApplied);
+                        if (absCorr > adaptiveMaxAbsCorrection) {
+                            adaptiveMaxAbsCorrection = absCorr;
+                        }
+                        if (decision.channelingDetected && !lastChannelingState) {
+                            // Leading edge: new channeling event
+                            if (adaptiveChannelingEvents < 255U) adaptiveChannelingEvents++;
+                        }
+                        lastChannelingState = decision.channelingDetected;
+                    }
+                }
             }
         }
 
@@ -214,6 +233,14 @@ void ShotHistoryPlugin::record() {
         header.durationMs = millis() - shotStart;
         float finalWeight = currentBluetoothWeight;
         header.finalWeight = finalWeight > 0.0f ? encodeUnsigned(finalWeight, WEIGHT_SCALE, WEIGHT_MAX_VALUE) : 0;
+        // Write adaptive metadata
+        header.adaptiveActive = (controller->getProfileManager()->getSelectedProfile().adaptiveBrew &&
+                                  adaptive::AdaptiveBrewEngine::isFeatureEnabled()) ? 1U : 0U;
+        header.channelingEvents = adaptiveChannelingEvents;
+        header.avgCorrectionX10 = adaptiveSampleCount > 0
+            ? static_cast<int16_t>((adaptiveCorrectionSum / adaptiveSampleCount) * 10.0F)
+            : 0;
+        header.maxCorrectionX10 = static_cast<int16_t>(adaptiveMaxAbsCorrection * 10.0F);
         currentFile.seek(0, SeekSet);
         currentFile.write(reinterpret_cast<const uint8_t *>(&header), sizeof(header));
         currentFile.close();
@@ -279,6 +306,13 @@ void ShotHistoryPlugin::startRecording() {
 
     // Reset phase tracking for new shot
     lastRecordedPhase = 0xFF; // Invalid value to detect first phase
+
+    // Reset adaptive tracking for new shot
+    adaptiveSampleCount      = 0;
+    adaptiveCorrectionSum    = 0.0F;
+    adaptiveMaxAbsCorrection  = 0.0F;
+    adaptiveChannelingEvents  = 0;
+    lastChannelingState      = false;
 }
 
 unsigned long ShotHistoryPlugin::getTime() {

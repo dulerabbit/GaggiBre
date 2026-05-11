@@ -69,8 +69,14 @@ struct ShotLogHeader {
     PhaseTransition phaseTransitions[12]; // 12 × 29 = 348 bytes
     uint8_t phaseTransitionCount;         // 1 byte
 
+    // Adaptive brew metadata (v5 reserved area, bytes 0-5 of 53)
+    uint8_t  adaptiveActive;        // 1 if adaptive brew was enabled for this shot
+    uint8_t  channelingEvents;      // number of CHANNELING state entries during shot (capped at 255)
+    int16_t  avgCorrectionX10;      // mean PI correction bar * 10 (signed, e.g. +3 = +0.3 bar)
+    int16_t  maxCorrectionX10;      // max |correction| bar * 10 seen during shot
+
     // Future expansion - pad to 512 bytes total
-    uint8_t reserved_v5[53]; // Manual padding to reach 512 bytes
+    uint8_t reserved_v5[47]; // remaining padding (53 - 6 used = 47)
 };
 #pragma pack(pop)
 

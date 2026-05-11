@@ -591,6 +591,7 @@ void Controller::updateControl() {
                 if (mode == MODE_BREW && brewProcess->profile.adaptiveBrew &&
                     adaptive::AdaptiveBrewEngine::isFeatureEnabled() &&
                     brewProcess->getPumpTarget() == PumpTarget::PUMP_TARGET_PRESSURE) {
+                    const bool wasChanneling = adaptiveBrewEngine.getChannelState() == adaptive::ChannelState::CHANNELING;
                     const auto decision = adaptiveBrewEngine.decideNext(
                         {.targetPressureBar = brewProcess->getPumpPressure(),
                          .actualPressureBar = pressure,
@@ -598,6 +599,21 @@ void Controller::updateControl() {
                          .targetFlowMLps    = brewProcess->getPumpFlow(),
                          .actualFlowMLps    = brewProcess->currentFlow});
                     adaptivePressure = constrain(decision.nextTargetPressureBar, 0.0f, settings.getPressureScaling());
+
+                    // Serial diagnostic: log when correction is significant.
+                    if (fabsf(decision.correctionApplied) >= 0.2F || decision.channelingDetected) {
+                        ESP_LOGI("AdaptiveBrew", "t=%.1fs  tgt=%.2f  act=%.2f  corr=%+.2f  conf=%.0f%%  %s",
+                                 millis() / 1000.0F,
+                                 brewProcess->getPumpPressure(), pressure,
+                                 decision.correctionApplied,
+                                 decision.confidence * 100.0F,
+                                 decision.channelingDetected ? "CHANNELING!" : "");
+                    }
+
+                    // Fire channeling event on leading edge only.
+                    if (!wasChanneling && decision.channelingDetected) {
+                        pluginManager->trigger("adaptive:channeling:start");
+                    }
                 }
 
                 clientController.sendAdvancedOutputControl(brewProcess->isRelayActive(), targetTemp,

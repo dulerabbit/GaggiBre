@@ -84,6 +84,13 @@ class ShotHistoryPlugin : public Plugin {
     // Phase transition tracking (v5+)
     uint8_t lastRecordedPhase = 0xFF; // Invalid initial value to detect first phase
 
+    // Adaptive brew tracking
+    uint16_t adaptiveSampleCount     = 0;
+    float    adaptiveCorrectionSum   = 0.0F;
+    float    adaptiveMaxAbsCorrection = 0.0F;
+    uint8_t  adaptiveChannelingEvents = 0;
+    bool     lastChannelingState     = false;
+
     // Async rebuild state
     bool rebuildInProgress = false;
 
