@@ -794,7 +794,7 @@ void DefaultUI::setupReactive() {
                           [=] {
                               String nameLabel = selectedProfile.label;
                               if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
-                                  nameLabel += selectedProfile.adaptiveBrew ? " [A ON]" : " [A OFF]";
+                                  nameLabel += selectedProfile.adaptiveBrew ? " [A]" : " [ ]";
                               }
                               lv_label_set_text(ui_BrewScreen_profileName, nameLabel.c_str());
                           },
@@ -889,7 +889,7 @@ void DefaultUI::setupReactive() {
             _ui_flag_modify(ui_BrewScreen_modeSwitch, LV_OBJ_FLAG_HIDDEN,
                             brewScreenState == BrewScreenState::Brew && volumetricAvailable);
             if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
-                lv_label_set_text_fmt(ui_BrewScreen_Label1, "Adaptive %s (tap gear)",
+                lv_label_set_text_fmt(ui_BrewScreen_Label1, "Adaptive: %s",
                                       selectedProfile.adaptiveBrew ? "ON" : "OFF");
             } else {
                 lv_label_set_text(ui_BrewScreen_Label1, "Selected profile");
