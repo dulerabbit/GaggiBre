@@ -94,6 +94,9 @@ class Controller {
     void setVolumetricOverride(bool override) { volumetricOverride = override; }
     bool isBluetoothScaleHealthy() const;
     void onFlush();
+
+    adaptive::AdaptiveDecision getLastAdaptiveDecision() const { return adaptiveBrewEngine.lastDecision(); }
+    adaptive::ChannelState     getAdaptiveChannelState()  const { return adaptiveBrewEngine.getChannelState(); }
     int getWaterLevel() const {
         float reversedLevel = static_cast<float>(settings.getEmptyTankDistance()) -
                               static_cast<float>(std::min(settings.getEmptyTankDistance(), tofDistance));

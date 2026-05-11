@@ -594,7 +594,9 @@ void Controller::updateControl() {
                     const auto decision = adaptiveBrewEngine.decideNext(
                         {.targetPressureBar = brewProcess->getPumpPressure(),
                          .actualPressureBar = pressure,
-                         .elapsedSeconds = millis() / 1000.0F});
+                         .elapsedSeconds    = millis() / 1000.0F,
+                         .targetFlowMLps    = brewProcess->getPumpFlow(),
+                         .actualFlowMLps    = brewProcess->currentFlow});
                     adaptivePressure = constrain(decision.nextTargetPressureBar, 0.0f, settings.getPressureScaling());
                 }
 

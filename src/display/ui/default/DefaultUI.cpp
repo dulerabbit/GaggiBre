@@ -967,6 +967,21 @@ void DefaultUI::updateStatusScreen() const {
     } else if (controller->getSettings().isDelayAdjust() && !process->isComplete()) {
         phaseText = "Calibrating...";
     }
+    // Live adaptive annotation: append engine status to phase label during active shot.
+    if (brewProcess->profile.adaptiveBrew &&
+        adaptive::AdaptiveBrewEngine::isFeatureEnabled() &&
+        process->isActive()) {
+        const auto decision = controller->getLastAdaptiveDecision();
+        if (decision.channelingDetected) {
+            phaseText += " CH!";
+        } else if (fabsf(decision.correctionApplied) >= 0.1F) {
+            char buf[12];
+            snprintf(buf, sizeof(buf), " A%+.1f", decision.correctionApplied);
+            phaseText += buf;
+        } else {
+            phaseText += " [A]";
+        }
+    }
     lv_label_set_text(ui_StatusScreen_phaseLabel, phaseText.c_str());
 
     // Add bounds check for processStarted timestamp
