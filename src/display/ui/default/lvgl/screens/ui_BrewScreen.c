@@ -91,6 +91,9 @@ void ui_event_BrewScreen_profileSelectBtn(lv_event_t *e) {
     if (event_code == LV_EVENT_CLICKED) {
         onProfileSelect(e);
     }
+    if (event_code == LV_EVENT_LONG_PRESSED) {
+        onSelectedProfileAdaptiveToggle(e);
+    }
 }
 
 void ui_event_BrewScreen_settingsButton(lv_event_t *e) {

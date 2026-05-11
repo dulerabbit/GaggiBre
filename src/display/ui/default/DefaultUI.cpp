@@ -453,6 +453,32 @@ void DefaultUI::onProfileAdaptiveToggle() {
     rerender = true;
 }
 
+void DefaultUI::onSelectedProfileAdaptiveToggle() {
+    Profile profile{};
+    if (!profileManager->loadSelectedProfile(profile)) {
+        return;
+    }
+
+    profile.adaptiveBrew = !profile.adaptiveBrew;
+    if (!profileManager->saveProfile(profile)) {
+        return;
+    }
+
+    profileManager->selectProfile(profile.id);
+    selectedProfile = profile;
+    selectedProfileId = profile.id;
+
+    for (size_t i = 0; i < favoritedProfileIds.size(); ++i) {
+        if (favoritedProfileIds[i] == profile.id) {
+            favoritedProfiles[i] = profile;
+            break;
+        }
+    }
+
+    profileDirty = true;
+    rerender = true;
+}
+
 void DefaultUI::onVolumetricDelete() {
     controller->onVolumetricDelete();
     profileVolumetric = profileManager->getSelectedProfile().isVolumetric();
