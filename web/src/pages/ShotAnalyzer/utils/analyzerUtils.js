@@ -307,6 +307,27 @@ export const columnConfig = [
     group: 'system',
     default: false,
   },
+  {
+    id: 'adap_active',
+    label: 'Adaptive Brew',
+    type: 'bool',
+    group: 'adaptive',
+    default: true,
+  },
+  {
+    id: 'adap_avg_corr',
+    label: 'Avg PI Correction (bar)',
+    type: 'val',
+    group: 'adaptive',
+    default: true,
+  },
+  {
+    id: 'adap_ch_events',
+    label: 'Channeling Events',
+    type: 'val',
+    group: 'adaptive',
+    default: true,
+  },
 ];
 
 /**
@@ -325,6 +346,7 @@ export const groups = {
   weight: 'Weight (g)',
   weightflow: 'Weight Flow (g/s)',
   system: 'System Info',
+  adaptive: 'Adaptive Brew',
 };
 
 export const utilityColors = {

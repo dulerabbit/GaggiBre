@@ -934,6 +934,9 @@ export function calculateShotMetrics(shotData, profileData, settings) {
     sys_scale: finalSysInfo.bluetoothScaleConnected,
     sys_vol_avail: finalSysInfo.volumetricAvailable,
     sys_ext: finalSysInfo.extendedRecording,
+    adap_active: !!(shotData.adaptiveMeta?.active),
+    adap_avg_corr: shotData.adaptiveMeta ? shotData.adaptiveMeta.avgCorrection : null,
+    adap_ch_events: shotData.adaptiveMeta ? shotData.adaptiveMeta.channelingEvents : null,
   };
 
   const highScaleDelayPhases = analyzedPhases.filter(p => p.highScaleDelay);
