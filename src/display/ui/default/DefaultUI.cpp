@@ -729,7 +729,14 @@ void DefaultUI::setupReactive() {
                           },
                           &active);
     effect_mgr.use_effect([=] { return currentScreen == ui_BrewScreen; },
-                          [=] { lv_label_set_text(ui_BrewScreen_profileName, selectedProfile.label.c_str()); },
+                          [=] {
+                              String nameLabel = selectedProfile.label;
+                              if (selectedProfile.adaptiveBrew &&
+                                  adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                                  nameLabel += " [A]";
+                              }
+                              lv_label_set_text(ui_BrewScreen_profileName, nameLabel.c_str());
+                          },
                           &selectedProfileId);
 
     effect_mgr.use_effect(
