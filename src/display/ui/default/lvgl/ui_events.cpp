@@ -597,7 +597,8 @@ void onBrewScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_BrewScreen_downDurationButton, 15);
     lv_obj_set_ext_click_area(ui_BrewScreen_upTempButton, 15);
     lv_obj_set_ext_click_area(ui_BrewScreen_downTempButton, 15);
-    lv_obj_set_ext_click_area(ui_BrewScreen_tempContainer, 20);
+        lv_obj_set_ext_click_area(ui_BrewScreen_tempContainer, 20);
+        lv_obj_set_ext_click_area(ui_BrewScreen_Label1, 20);
 }
 
 void onSimpleProcessScreenLoad(lv_event_t *e) {

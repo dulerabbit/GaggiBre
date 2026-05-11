@@ -144,6 +144,14 @@ void ui_event_BrewScreen_byTimeButton(lv_event_t *e) {
     }
 }
 
+void ui_event_BrewScreen_Label1(lv_event_t *e) {
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    if (event_code == LV_EVENT_CLICKED) {
+        onSelectedProfileAdaptiveToggle(e);
+    }
+}
+
 void ui_event_BrewScreen_saveButton(lv_event_t *e) {
     lv_event_code_t event_code = lv_event_get_code(e);
 
@@ -306,6 +314,7 @@ void ui_BrewScreen_screen_init(void) {
     lv_obj_set_height(ui_BrewScreen_Label1, LV_SIZE_CONTENT); /// 1
     lv_obj_set_align(ui_BrewScreen_Label1, LV_ALIGN_CENTER);
     lv_label_set_text(ui_BrewScreen_Label1, "Selected profile");
+    lv_obj_add_flag(ui_BrewScreen_Label1, LV_OBJ_FLAG_CLICKABLE);
     ui_object_set_themeable_style_property(ui_BrewScreen_Label1, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR,
                                            _ui_theme_color_NiceWhite);
     ui_object_set_themeable_style_property(ui_BrewScreen_Label1, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
@@ -543,6 +552,7 @@ void ui_BrewScreen_screen_init(void) {
     lv_obj_add_event_cb(ui_BrewScreen_upDurationButton, ui_event_BrewScreen_upDurationButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_BrewScreen_downDurationButton, ui_event_BrewScreen_downDurationButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_BrewScreen_byTimeButton, ui_event_BrewScreen_byTimeButton, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_BrewScreen_Label1, ui_event_BrewScreen_Label1, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_BrewScreen_saveButton, ui_event_BrewScreen_saveButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_BrewScreen_acceptButton, ui_event_BrewScreen_acceptButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_BrewScreen_saveAsNewButton, ui_event_BrewScreen_saveAsNewButton, LV_EVENT_ALL, NULL);
