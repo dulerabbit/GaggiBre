@@ -429,6 +429,30 @@ void DefaultUI::onProfileSelect() {
     changeScreen(&ui_BrewScreen, ui_BrewScreen_screen_init);
 }
 
+void DefaultUI::onProfileAdaptiveToggle() {
+    if (currentProfileIdx >= favoritedProfileIds.size()) {
+        return;
+    }
+
+    const String &profileId = favoritedProfileIds[currentProfileIdx];
+    Profile profile{};
+    if (!profileManager->loadProfile(profileId, profile)) {
+        return;
+    }
+
+    profile.adaptiveBrew = !profile.adaptiveBrew;
+    if (!profileManager->saveProfile(profile)) {
+        return;
+    }
+
+    favoritedProfiles[currentProfileIdx] = profile;
+    if (profileId == selectedProfileId) {
+        selectedProfile = profile;
+    }
+    profileDirty = true;
+    rerender = true;
+}
+
 void DefaultUI::onVolumetricDelete() {
     controller->onVolumetricDelete();
     profileVolumetric = profileManager->getSelectedProfile().isVolumetric();
@@ -745,7 +769,11 @@ void DefaultUI::setupReactive() {
             if (profileLoaded) {
                 _ui_flag_modify(ui_ProfileScreen_profileDetails, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_REMOVE);
                 _ui_flag_modify(ui_ProfileScreen_loadingSpinner, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
-                lv_label_set_text(ui_ProfileScreen_profileName, favoritedProfiles[currentProfileIdx].label.c_str());
+                String profileLabel = favoritedProfiles[currentProfileIdx].label;
+                if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                    profileLabel += favoritedProfiles[currentProfileIdx].adaptiveBrew ? " [A]" : " [ ]";
+                }
+                lv_label_set_text(ui_ProfileScreen_profileName, profileLabel.c_str());
                 lv_label_set_text(ui_ProfileScreen_mainLabel, currentProfileIdx == 0 ? "Current profile" : "Select profile");
 
                 const auto minutes = static_cast<int>(favoritedProfiles[currentProfileIdx].getTotalDuration() / 60.0 - 0.5);

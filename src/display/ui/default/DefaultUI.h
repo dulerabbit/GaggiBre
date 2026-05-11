@@ -38,6 +38,7 @@ class DefaultUI {
     void onNextProfile();
     void onPreviousProfile();
     void onProfileSelect();
+    void onProfileAdaptiveToggle();
     void setBrightness(int brightness) {
         if (panelDriver) {
             panelDriver->setBrightness(brightness);

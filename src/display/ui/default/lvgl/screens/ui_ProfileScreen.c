@@ -82,6 +82,9 @@ void ui_event_ProfileScreen_chooseButton(lv_event_t *e) {
     if (event_code == LV_EVENT_CLICKED) {
         onProfileLoad(e);
     }
+    if (event_code == LV_EVENT_LONG_PRESSED) {
+        onProfileAdaptiveToggle(e);
+    }
 }
 
 // build funtions
