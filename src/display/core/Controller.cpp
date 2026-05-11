@@ -587,10 +587,21 @@ void Controller::updateControl() {
                 return;
             }
             if (brewProcess->isAdvancedPump()) {
+                float adaptivePressure = brewProcess->getPumpPressure();
+                if (mode == MODE_BREW && brewProcess->profile.adaptiveBrew &&
+                    adaptive::AdaptiveBrewEngine::isFeatureEnabled() &&
+                    brewProcess->getPumpTarget() == PumpTarget::PUMP_TARGET_PRESSURE) {
+                    const auto decision = adaptiveBrewEngine.decideNext(
+                        {.targetPressureBar = brewProcess->getPumpPressure(),
+                         .actualPressureBar = pressure,
+                         .elapsedSeconds = millis() / 1000.0F});
+                    adaptivePressure = constrain(decision.nextTargetPressureBar, 0.0f, settings.getPressureScaling());
+                }
+
                 clientController.sendAdvancedOutputControl(brewProcess->isRelayActive(), targetTemp,
                                                            brewProcess->getPumpTarget() == PumpTarget::PUMP_TARGET_PRESSURE,
-                                                           brewProcess->getPumpPressure(), brewProcess->getPumpFlow());
-                targetPressure = brewProcess->getPumpPressure();
+                                                           adaptivePressure, brewProcess->getPumpFlow());
+                targetPressure = adaptivePressure;
                 targetFlow = brewProcess->getPumpFlow();
                 return;
             }
@@ -618,6 +629,7 @@ void Controller::activate() {
         }
     }
     delay(200);
+    adaptiveBrewEngine.reset();
     if (mode == MODE_MANUAL) {
         manualPressureTarget = getProfileManualPressureTarget(profileManager->getSelectedProfile(), settings.getPressureScaling());
     }
@@ -656,6 +668,7 @@ void Controller::deactivate() {
         pluginManager->trigger("controller:grind:end");
     }
     pluginManager->trigger("controller:process:end");
+    adaptiveBrewEngine.reset();
     updateLastAction();
 }
 
@@ -667,6 +680,7 @@ void Controller::clear() {
     delete lastProcess;
     lastProcess = nullptr;
     currentVolumetricSource = VolumetricMeasurementSource::INACTIVE;
+    adaptiveBrewEngine.reset();
 }
 
 void Controller::activateGrind() {

@@ -26,6 +26,7 @@ export function ProfileEdit() {
           label: 'New Profile',
           description: '',
           temperature: 93,
+          adaptiveBrew: false,
           phases: [
             {
               name: 'Pump',

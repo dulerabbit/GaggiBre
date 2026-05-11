@@ -125,6 +125,18 @@ export function ExtendedProfileForm(props) {
               </label>
             </div>
           </div>
+          <div className='form-control'>
+            <label className='label cursor-pointer justify-start gap-3'>
+              <input
+                type='checkbox'
+                className='checkbox'
+                checked={!!data?.adaptiveBrew}
+                onChange={e => onFieldChange('adaptiveBrew', e.target.checked)}
+                aria-label='Enable adaptive brew for this profile'
+              />
+              <span className='label-text'>Enable Adaptive Brew (Brew mode only)</span>
+            </label>
+          </div>
         </Card>
         <Card sm={10}>
           <ExtendedProfileChart

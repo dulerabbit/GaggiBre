@@ -30,6 +30,9 @@
     "selected": {
       "type": "boolean"
     },
+    "adaptiveBrew": {
+      "type": "boolean"
+    },
     "phases": {
       "type": "array",
       "items": {

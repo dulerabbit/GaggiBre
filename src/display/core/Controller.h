@@ -5,6 +5,7 @@
 #include "NimBLEComm.h"
 #include "PluginManager.h"
 #include "Settings.h"
+#include <display/core/AdaptiveBrewEngine.h>
 #include <WiFi.h>
 #include <display/core/ProfileManager.h>
 #include <display/core/process/Process.h>
@@ -148,6 +149,7 @@ class Controller {
     float currentPuckFlow = 0.0f;
     float currentPumpFlow = 0.0f;
     float targetFlow = 0.0f;
+    adaptive::AdaptiveBrewEngine adaptiveBrewEngine;
     int tofDistance = 0;
 
     SystemInfo systemInfo{};
