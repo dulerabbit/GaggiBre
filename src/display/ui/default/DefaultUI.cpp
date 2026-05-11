@@ -449,6 +449,7 @@ void DefaultUI::onProfileAdaptiveToggle() {
     if (profileId == selectedProfileId) {
         selectedProfile = profile;
     }
+    adaptiveStateVersion++;
     profileDirty = true;
     rerender = true;
 }
@@ -475,6 +476,7 @@ void DefaultUI::onSelectedProfileAdaptiveToggle() {
         }
     }
 
+    adaptiveStateVersion++;
     profileDirty = true;
     rerender = true;
 }
@@ -791,13 +793,12 @@ void DefaultUI::setupReactive() {
     effect_mgr.use_effect([=] { return currentScreen == ui_BrewScreen; },
                           [=] {
                               String nameLabel = selectedProfile.label;
-                              if (selectedProfile.adaptiveBrew &&
-                                  adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
-                                  nameLabel += " [A]";
+                              if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                                  nameLabel += selectedProfile.adaptiveBrew ? " [A ON]" : " [A OFF]";
                               }
                               lv_label_set_text(ui_BrewScreen_profileName, nameLabel.c_str());
                           },
-                          &selectedProfileId);
+                          &selectedProfileId, &adaptiveStateVersion);
 
     effect_mgr.use_effect(
         [=] { return currentScreen == ui_ProfileScreen; },
@@ -887,11 +888,17 @@ void DefaultUI::setupReactive() {
             _ui_flag_modify(ui_BrewScreen_profileInfo, LV_OBJ_FLAG_HIDDEN, brewScreenState == BrewScreenState::Brew);
             _ui_flag_modify(ui_BrewScreen_modeSwitch, LV_OBJ_FLAG_HIDDEN,
                             brewScreenState == BrewScreenState::Brew && volumetricAvailable);
+            if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                lv_label_set_text_fmt(ui_BrewScreen_Label1, "Adaptive %s (tap gear)",
+                                      selectedProfile.adaptiveBrew ? "ON" : "OFF");
+            } else {
+                lv_label_set_text(ui_BrewScreen_Label1, "Selected profile");
+            }
             if (volumetricAvailable) {
                 lv_img_set_src(ui_BrewScreen_volumetricButton, bluetoothScales ? &ui_img_1424216268 : &ui_img_flowmeter_png);
             }
         },
-        &brewScreenState, &volumetricAvailable, &bluetoothScales);
+        &brewScreenState, &volumetricAvailable, &bluetoothScales, &adaptiveStateVersion);
     effect_mgr.use_effect(
         [=] { return currentScreen == ui_BrewScreen; },
         [=]() {
