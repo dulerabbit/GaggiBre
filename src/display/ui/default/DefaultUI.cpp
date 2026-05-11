@@ -479,6 +479,16 @@ void DefaultUI::onSelectedProfileAdaptiveToggle() {
     rerender = true;
 }
 
+void DefaultUI::onBrewSettingsButton() {
+    if (brewScreenState == BrewScreenState::Brew) {
+        changeBrewScreenMode(BrewScreenState::Settings);
+        return;
+    }
+
+    onSelectedProfileAdaptiveToggle();
+    changeBrewScreenMode(BrewScreenState::Brew);
+}
+
 void DefaultUI::onVolumetricDelete() {
     controller->onVolumetricDelete();
     profileVolumetric = profileManager->getSelectedProfile().isVolumetric();

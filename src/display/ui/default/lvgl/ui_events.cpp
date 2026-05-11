@@ -620,7 +620,7 @@ void onGrindScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_GrindScreen_ImgButton2, 20);
 }
 
-void onProfileSettings(lv_event_t *e) { controller.getUI()->changeBrewScreenMode(BrewScreenState::Settings); }
+void onProfileSettings(lv_event_t *e) { controller.getUI()->onBrewSettingsButton(); }
 
 void onProfileSave(lv_event_t *e) {
     controller.onProfileSave();

@@ -40,6 +40,7 @@ class DefaultUI {
     void onProfileSelect();
     void onProfileAdaptiveToggle();
     void onSelectedProfileAdaptiveToggle();
+    void onBrewSettingsButton();
     void setBrightness(int brightness) {
         if (panelDriver) {
             panelDriver->setBrightness(brightness);
