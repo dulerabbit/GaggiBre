@@ -792,11 +792,7 @@ void DefaultUI::setupReactive() {
                           &active);
     effect_mgr.use_effect([=] { return currentScreen == ui_BrewScreen; },
                           [=] {
-                              String nameLabel = selectedProfile.label;
-                              if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
-                                  nameLabel += selectedProfile.adaptiveBrew ? " [A]" : " [ ]";
-                              }
-                              lv_label_set_text(ui_BrewScreen_profileName, nameLabel.c_str());
+                              lv_label_set_text(ui_BrewScreen_profileName, selectedProfile.label.c_str());
                           },
                           &selectedProfileId, &adaptiveStateVersion);
 
@@ -889,10 +885,27 @@ void DefaultUI::setupReactive() {
             _ui_flag_modify(ui_BrewScreen_modeSwitch, LV_OBJ_FLAG_HIDDEN,
                             brewScreenState == BrewScreenState::Brew && volumetricAvailable);
             if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
-                lv_label_set_text_fmt(ui_BrewScreen_Label1, "Adaptive: %s",
-                                      selectedProfile.adaptiveBrew ? "ON" : "OFF");
+                const bool adaptiveOn = selectedProfile.adaptiveBrew;
+                lv_label_set_text_fmt(ui_BrewScreen_Label1, "Adaptive %s", adaptiveOn ? "ON" : "OFF");
+                lv_obj_set_style_radius(ui_BrewScreen_Label1, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_pad_left(ui_BrewScreen_Label1, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_pad_right(ui_BrewScreen_Label1, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_pad_top(ui_BrewScreen_Label1, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_pad_bottom(ui_BrewScreen_Label1, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_color(ui_BrewScreen_Label1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_width(ui_BrewScreen_Label1, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_70 : LV_OPA_40,
+                                            LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(ui_BrewScreen_Label1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_30 : LV_OPA_TRANSP,
+                                        LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_text_color(ui_BrewScreen_Label1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_text_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_COVER : LV_OPA_70,
+                                          LV_PART_MAIN | LV_STATE_DEFAULT);
             } else {
                 lv_label_set_text(ui_BrewScreen_Label1, "Selected profile");
+                lv_obj_set_style_bg_opa(ui_BrewScreen_Label1, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_opa(ui_BrewScreen_Label1, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
             }
             if (volumetricAvailable) {
                 lv_img_set_src(ui_BrewScreen_volumetricButton, bluetoothScales ? &ui_img_1424216268 : &ui_img_flowmeter_png);
