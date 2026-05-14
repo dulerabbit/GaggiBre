@@ -28,6 +28,7 @@ const FIELD_BITS = {
   EV: 10, // estimated weight
   PR: 11, // puck resistance
   SI: 12, // system info (v2+)
+  AC: 13, // adaptive PI correction bar * 100, signed (v5+ adaptive shots)
   // Phase number moved to header transitions in v5+
 };
 
@@ -63,6 +64,7 @@ const FIELD_DEFS = {
       extendedRecording: !!(val & 0x0010),
     }),
   },
+  [FIELD_BITS.AC]: { name: 'ac', type: 'int16', scale: 100 },
   // Phase number field removed in v5+, moved to header transitions
 };
 
@@ -268,6 +270,24 @@ export function parseBinaryShot(arrayBuffer, id) {
   const sampleVolume = samples.length ? samples[samples.length - 1].v : 0;
   const volume = headerVolume > 0 ? headerVolume : sampleVolume > 0 ? sampleVolume : null;
 
+  // Parse adaptive brew metadata (v5+ only)
+  // Offsets: adaptiveActive=459, channelingEvents=460, avgCorrectionX10=461 (int16), maxCorrectionX10=463 (int16)
+  let adaptiveMeta = null;
+  if (version >= 5 && view.byteLength >= 465) {
+    const adaptiveActive = view.getUint8(459);
+    const channelingEvents = view.getUint8(460);
+    const avgCorrectionX10 = view.getInt16(461, true);
+    const maxCorrectionX10 = view.getInt16(463, true);
+    if (adaptiveActive) {
+      adaptiveMeta = {
+        active: true,
+        channelingEvents,
+        avgCorrection: avgCorrectionX10 / 10,
+        maxCorrection: maxCorrectionX10 / 10,
+      };
+    }
+  }
+
   return {
     id,
     version,
@@ -283,5 +303,6 @@ export function parseBinaryShot(arrayBuffer, id) {
     trailingBytes,
     samplesExpected: sampleCountHeader,
     phaseTransitions, // v5+ phase transition data
+    adaptiveMeta,     // v5+ adaptive brew metadata (null if not an adaptive shot)
   };
 }

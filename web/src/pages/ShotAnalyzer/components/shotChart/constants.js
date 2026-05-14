@@ -64,6 +64,7 @@ export const CHART_COLOR_FALLBACKS = {
   weightFlow: '#6d28d9',
   phaseLine: 'rgba(107, 114, 128, 0.5)',
   stopLabel: 'rgba(220, 38, 38, 0.85)',
+  adaptiveCorrection: '#FF8C00',
 };
 
 export const CHART_COLOR_TOKEN_MAP = {
@@ -76,6 +77,7 @@ export const CHART_COLOR_TOKEN_MAP = {
   weightFlow: '--analyzer-weightflow-anchor',
   phaseLine: '--analyzer-phase-line',
   stopLabel: '--analyzer-stop-label',
+  adaptiveCorrection: '--analyzer-adaptive-correction',
 };
 
 export const WATER_DRAWN_PHASE_LABEL = 'Water Drawn (Phase)';
@@ -156,9 +158,8 @@ export const VISIBILITY_KEY_BY_LABEL = {
   'Puck Flow': 'puckFlow',
   Weight: 'weight',
   'Weight Flow': 'weightFlow',
-};
-
-export const INITIAL_VISIBILITY = {
+  'Adaptive Correction': 'adaptiveCorrection',
+}; = {
   phaseNames: true,
   stops: true,
   brewModeLabel: true,
@@ -171,6 +172,7 @@ export const INITIAL_VISIBILITY = {
   puckFlow: true,
   weight: true,
   weightFlow: true,
+  adaptiveCorrection: true,
 };
 
 export const UNIT_BY_LABEL = {

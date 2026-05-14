@@ -207,9 +207,49 @@ void Controller::setupInfos() {
 void Controller::setupWifi() {
     if (settings.getWifiSsid() != "" && settings.getWifiPassword() != "") {
         WiFi.setHostname(settings.getMdnsName().c_str());
-        WiFi.mode(WIFI_STA);
+        // Keep AP alive while STA connects so phones can always rejoin GaggiMate.
+        WiFi.mode(WIFI_AP_STA);
         WiFi.setAutoReconnect(true);
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
+        isApConnection = true;
+        WiFi.softAPConfig(WIFI_AP_IP, WIFI_AP_IP, WIFI_SUBNET_MASK);
+        WiFi.softAP(WIFI_AP_SSID);
+
+        // Register event handlers before begin() so they fire even if initial
+        // connect is slow or if the device reconnects after a transient drop.
+        // Guard with `initialized` so the got_ip event during the startup polling
+        // loop doesn't double-fire before setupWifi() issues its own trigger.
+        WiFi.onEvent(
+            [this](WiFiEvent_t, WiFiEventInfo_t) {
+                if (!initialized) return; // Startup path — setupWifi() handles initial trigger
+                // Keep AP active even after STA reconnect to avoid phone lock/unlock dropouts.
+                isApConnection = true;
+                ESP_LOGI(LOG_TAG, "WiFi connected, IP: %s", WiFi.localIP().toString().c_str());
+                pluginManager->trigger("controller:wifi:connect", "AP", 1);
+            },
+            WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+        WiFi.onEvent(
+            [this](WiFiEvent_t, WiFiEventInfo_t info) {
+                ESP_LOGI(LOG_TAG, "Lost WiFi connection. Reason: %s",
+                         WiFi.disconnectReasonName(static_cast<wifi_err_reason_t>(info.wifi_sta_disconnected.reason)));
+                pluginManager->trigger("controller:wifi:disconnect");
+
+                // Keep device reachable: immediately expose AP fallback while retrying STA.
+                isApConnection = true;
+                if (WiFi.getMode() != WIFI_AP_STA) {
+                    WiFi.mode(WIFI_AP_STA);
+                }
+                WiFi.softAPConfig(WIFI_AP_IP, WIFI_AP_IP, WIFI_SUBNET_MASK);
+                WiFi.softAP(WIFI_AP_SSID);
+                WiFi.setTxPower(WIFI_POWER_19_5dBm);
+                pluginManager->trigger("controller:wifi:connect", "AP", 1);
+
+                if (settings.getWifiSsid() != "" && settings.getWifiPassword() != "") {
+                    WiFi.begin(settings.getWifiSsid(), settings.getWifiPassword());
+                }
+            },
+            WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+
         WiFi.begin(settings.getWifiSsid(), settings.getWifiPassword());
         WiFi.setTxPower(WIFI_POWER_19_5dBm);
         for (int attempts = 0; attempts < WIFI_CONNECT_ATTEMPTS; attempts++) {
@@ -223,15 +263,6 @@ void Controller::setupWifi() {
         if (WiFi.status() == WL_CONNECTED) {
             ESP_LOGI(LOG_TAG, "Connected to %s with IP address %s", settings.getWifiSsid().c_str(),
                      WiFi.localIP().toString().c_str());
-            WiFi.onEvent([this](WiFiEvent_t, WiFiEventInfo_t) { pluginManager->trigger("controller:wifi:connect", "AP", 0); },
-                         WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
-            WiFi.onEvent(
-                [this](WiFiEvent_t, WiFiEventInfo_t info) {
-                    ESP_LOGI(LOG_TAG, "Lost WiFi connection. Reason: %s",
-                             WiFi.disconnectReasonName(static_cast<wifi_err_reason_t>(info.wifi_sta_disconnected.reason)));
-                    pluginManager->trigger("controller:wifi:disconnect");
-                },
-                WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
             configTzTime(resolve_timezone(settings.getTimezone()), NTP_SERVER);
             setenv("TZ", resolve_timezone(settings.getTimezone()), 1);
             tzset();
@@ -239,7 +270,7 @@ void Controller::setupWifi() {
             sntp_setservername(0, NTP_SERVER);
             sntp_init();
         } else {
-            WiFi.disconnect(true, true);
+            WiFi.disconnect(false, false);
             ESP_LOGI(LOG_TAG, "Timed out while connecting to WiFi");
             Serial.println("Timed out while connecting to WiFi");
         }
@@ -587,10 +618,39 @@ void Controller::updateControl() {
                 return;
             }
             if (brewProcess->isAdvancedPump()) {
+                float adaptivePressure = brewProcess->getPumpPressure();
+                if (mode == MODE_BREW && brewProcess->profile.adaptiveBrew &&
+                    adaptive::AdaptiveBrewEngine::isFeatureEnabled() &&
+                    brewProcess->getPumpTarget() == PumpTarget::PUMP_TARGET_PRESSURE) {
+                    const bool wasChanneling = adaptiveBrewEngine.getChannelState() == adaptive::ChannelState::CHANNELING;
+                    const auto decision = adaptiveBrewEngine.decideNext(
+                        {.targetPressureBar = brewProcess->getPumpPressure(),
+                         .actualPressureBar = pressure,
+                         .elapsedSeconds    = millis() / 1000.0F,
+                         .targetFlowMLps    = brewProcess->getPumpFlow(),
+                         .actualFlowMLps    = brewProcess->currentFlow});
+                    adaptivePressure = constrain(decision.nextTargetPressureBar, 0.0f, settings.getPressureScaling());
+
+                    // Serial diagnostic: log when correction is significant.
+                    if (fabsf(decision.correctionApplied) >= 0.2F || decision.channelingDetected) {
+                        ESP_LOGI("AdaptiveBrew", "t=%.1fs  tgt=%.2f  act=%.2f  corr=%+.2f  conf=%.0f%%  %s",
+                                 millis() / 1000.0F,
+                                 brewProcess->getPumpPressure(), pressure,
+                                 decision.correctionApplied,
+                                 decision.confidence * 100.0F,
+                                 decision.channelingDetected ? "FLOW INSTABILITY!" : "");
+                    }
+
+                    // Fire channeling event on leading edge only.
+                    if (!wasChanneling && decision.channelingDetected) {
+                        pluginManager->trigger("adaptive:channeling:start");
+                    }
+                }
+
                 clientController.sendAdvancedOutputControl(brewProcess->isRelayActive(), targetTemp,
                                                            brewProcess->getPumpTarget() == PumpTarget::PUMP_TARGET_PRESSURE,
-                                                           brewProcess->getPumpPressure(), brewProcess->getPumpFlow());
-                targetPressure = brewProcess->getPumpPressure();
+                                                           adaptivePressure, brewProcess->getPumpFlow());
+                targetPressure = adaptivePressure;
                 targetFlow = brewProcess->getPumpFlow();
                 return;
             }
@@ -618,6 +678,7 @@ void Controller::activate() {
         }
     }
     delay(200);
+    adaptiveBrewEngine.reset();
     if (mode == MODE_MANUAL) {
         manualPressureTarget = getProfileManualPressureTarget(profileManager->getSelectedProfile(), settings.getPressureScaling());
     }
@@ -656,6 +717,7 @@ void Controller::deactivate() {
         pluginManager->trigger("controller:grind:end");
     }
     pluginManager->trigger("controller:process:end");
+    adaptiveBrewEngine.reset();
     updateLastAction();
 }
 
@@ -667,6 +729,7 @@ void Controller::clear() {
     delete lastProcess;
     lastProcess = nullptr;
     currentVolumetricSource = VolumetricMeasurementSource::INACTIVE;
+    adaptiveBrewEngine.reset();
 }
 
 void Controller::activateGrind() {

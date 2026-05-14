@@ -44,6 +44,29 @@ export function ShotHistory() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const loadHistoryAbortRef = useRef(null);
+  const loadHistoryViaWebSocket = async () => {
+    const wsResponse = await apiService.request({ tp: 'req:history:list' });
+    const wsHistory = (wsResponse?.history || []).map(item => ({
+      id: String(item.id),
+      version: item.version,
+      timestamp: item.timestamp,
+      profile: item.profile,
+      profileId: item.profileId,
+      samples: item.samples || 0,
+      duration: item.duration || 0,
+      volume: item.volume ?? null,
+      rating: null,
+      incomplete: item.incomplete ?? false,
+      notes: null,
+      loaded: false,
+      data: null,
+    }));
+
+    wsHistory.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    setHistory(wsHistory);
+    setLoading(false);
+  };
+
   const loadHistory = async () => {
     // Abort any in-flight fetch to prevent request pileup on the ESP32.
     loadHistoryAbortRef.current?.abort();
@@ -55,17 +78,23 @@ export function ShotHistory() {
       const response = await fetch('/api/history/index.bin', { signal: controller.signal });
       if (!response.ok) {
         if (response.status === 404) {
-          // Index doesn't exist, show empty list with option to rebuild
-          console.log('Shot index not found. You may need to rebuild it if shots exist.');
-          setHistory([]);
-          setLoading(false);
+          // Index missing: fallback to websocket listing from slog headers.
+          console.log('Shot index missing, falling back to websocket history list.');
+          await loadHistoryViaWebSocket();
           return;
         }
         throw new Error(`HTTP ${response.status}`);
       }
 
       const arrayBuffer = await response.arrayBuffer();
-      const indexData = parseBinaryIndex(arrayBuffer);
+      let indexData;
+      try {
+        indexData = parseBinaryIndex(arrayBuffer);
+      } catch (parseError) {
+        console.warn('Failed to parse binary index, falling back to websocket history list.', parseError);
+        await loadHistoryViaWebSocket();
+        return;
+      }
       const shotList = indexToShotList(indexData);
 
       // Preserve loaded state and data from existing shots
@@ -89,9 +118,14 @@ export function ShotHistory() {
       setLoading(false);
     } catch (error) {
       if (error.name === 'AbortError') return; // Intentional abort, not an error.
-      console.error('Failed to load shot history:', error);
-      setHistory([]);
-      setLoading(false);
+      console.error('Failed to load shot history from index, trying websocket fallback:', error);
+      try {
+        await loadHistoryViaWebSocket();
+      } catch (fallbackError) {
+        console.error('Websocket fallback also failed:', fallbackError);
+        setHistory([]);
+        setLoading(false);
+      }
     }
   };
   useEffect(() => {

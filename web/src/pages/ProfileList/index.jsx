@@ -72,6 +72,7 @@ function ProfileCard({
   data,
   onDelete,
   onSelect,
+  onToggleAdaptive,
   onFavorite,
   onUnfavorite,
   onDuplicate,
@@ -259,6 +260,12 @@ function ProfileCard({
                 >
                   {typeText}
                 </span>
+                <span
+                  className={`badge badge-sm lg:badge-md font-medium ${data.adaptiveBrew ? 'badge-warning' : 'badge-outline'}`}
+                  aria-label={`Adaptive brew ${data.adaptiveBrew ? 'enabled' : 'disabled'}`}
+                >
+                  A {data.adaptiveBrew ? 'ON' : 'OFF'}
+                </span>
                 <button
                   onClick={onToggleDetails}
                   className='btn btn-xs btn-ghost self-start'
@@ -364,6 +371,20 @@ function ProfileCard({
                         <button
                           role='menuitem'
                           onClick={() => {
+                            onToggleAdaptive(data.id, !data.adaptiveBrew);
+                            closeMenu();
+                          }}
+                          className='justify-start text-warning'
+                          aria-label={`${data.adaptiveBrew ? 'Disable' : 'Enable'} adaptive brew for ${data.label}`}
+                        >
+                          <span className='font-semibold'>A</span>
+                          <span>{data.adaptiveBrew ? 'Adaptive Off' : 'Adaptive On'}</span>
+                        </button>
+                      </li>
+                      <li role='none'>
+                        <button
+                          role='menuitem'
+                          onClick={() => {
                             onDuplicate(data.id);
                             closeMenu();
                           }}
@@ -437,6 +458,15 @@ function ProfileCard({
                     >
                       <FontAwesomeIcon icon={faChartSimple} />
                     </a>
+                  </Tooltip>
+                  <Tooltip content={data.adaptiveBrew ? 'Disable adaptive brew' : 'Enable adaptive brew'}>
+                    <button
+                      onClick={() => onToggleAdaptive(data.id, !data.adaptiveBrew)}
+                      className={`btn btn-sm ${data.adaptiveBrew ? 'btn-warning' : 'btn-outline'}`}
+                      aria-label={`${data.adaptiveBrew ? 'Disable' : 'Enable'} adaptive brew for ${data.label}`}
+                    >
+                      A
+                    </button>
                   </Tooltip>
                   <Tooltip content='Export profile'>
                     <button
@@ -878,6 +908,24 @@ export function ProfileList() {
     [apiService, setLoading],
   );
 
+  const onToggleAdaptive = useCallback(
+    async (id, adaptiveBrew) => {
+      setLoading(true);
+      const profile = profiles.find(p => p.id === id);
+      if (profile) {
+        await apiService.request({
+          tp: 'req:profiles:save',
+          profile: {
+            ...profile,
+            adaptiveBrew,
+          },
+        });
+      }
+      await loadProfiles();
+    },
+    [apiService, profiles],
+  );
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const onDuplicate = useCallback(
     async id => {
@@ -1052,6 +1100,7 @@ export function ProfileList() {
               data={data}
               onDelete={onDelete}
               onSelect={onSelect}
+              onToggleAdaptive={onToggleAdaptive}
               favoriteDisabled={favoriteDisabled}
               unfavoriteDisabled={unfavoriteDisabled}
               onUnfavorite={onUnfavorite}
