@@ -5,6 +5,7 @@
 #include "NimBLEComm.h"
 #include "PluginManager.h"
 #include "Settings.h"
+#include <display/core/AdaptiveBrewEngine.h>
 #include <WiFi.h>
 #include <display/core/ProfileManager.h>
 #include <display/core/process/Process.h>
@@ -93,16 +94,19 @@ class Controller {
     void setVolumetricOverride(bool override) { volumetricOverride = override; }
     bool isBluetoothScaleHealthy() const;
     void onFlush();
+
+    adaptive::AdaptiveDecision getLastAdaptiveDecision() const { return adaptiveBrewEngine.lastDecision(); }
+    adaptive::ChannelState     getAdaptiveChannelState()  const { return adaptiveBrewEngine.getChannelState(); }
     int getWaterLevel() const {
         float reversedLevel = static_cast<float>(settings.getEmptyTankDistance()) -
                               static_cast<float>(std::min(settings.getEmptyTankDistance(), tofDistance));
         return static_cast<int>((reversedLevel - settings.getFullTankDistance()) /
                                 static_cast<float>(settings.getEmptyTankDistance() - settings.getFullTankDistance()) * 100.0f);
     };
-    int getTofDistance() const { return tofDistance; }
 
     void onVolumetricDelete();
     bool isLowWaterLevel() const { return getWaterLevel() < 20; };
+    int getTofDistance() const { return tofDistance; }
 
     SystemInfo getSystemInfo() const { return systemInfo; }
 
@@ -149,6 +153,7 @@ class Controller {
     float currentPuckFlow = 0.0f;
     float currentPumpFlow = 0.0f;
     float targetFlow = 0.0f;
+    adaptive::AdaptiveBrewEngine adaptiveBrewEngine;
     int tofDistance = 0;
 
     SystemInfo systemInfo{};

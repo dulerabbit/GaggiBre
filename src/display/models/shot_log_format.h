@@ -20,8 +20,8 @@ static constexpr uint32_t SHOT_LOG_MAGIC = 0x544F4853; // 'S''H''O''T' little-en
 static constexpr uint8_t SHOT_LOG_VERSION = 5;
 static constexpr uint16_t SHOT_LOG_HEADER_SIZE = 512;
 static constexpr uint16_t SHOT_LOG_SAMPLE_INTERVAL_MS = 250; // nominal recording interval
-static constexpr uint32_t SHOT_LOG_FIELDS_MASK_ALL = 0x1FFF; // 13 fields present (removed phase number)
-static constexpr uint32_t SHOT_LOG_SAMPLE_SIZE = 26;
+static constexpr uint32_t SHOT_LOG_FIELDS_MASK_ALL = 0x3FFF; // 14 fields present (added adaptive correction)
+static constexpr uint32_t SHOT_LOG_SAMPLE_SIZE = 28;
 
 // Field bit positions (for future expansion)
 static constexpr uint32_t SHOT_LOG_FIELD_T = 0x0001;  // tick (bit 0)
@@ -37,7 +37,8 @@ static constexpr uint32_t SHOT_LOG_FIELD_V = 0x0200;  // volumetric weight (bit 
 static constexpr uint32_t SHOT_LOG_FIELD_EV = 0x0400; // estimated weight (bit 10)
 static constexpr uint32_t SHOT_LOG_FIELD_PR = 0x0800; // puck resistance (bit 11)
 static constexpr uint32_t SHOT_LOG_FIELD_SI = 0x1000; // system info (bit 12)
-// Bits 13-31 available for future fields
+static constexpr uint32_t SHOT_LOG_FIELD_AC = 0x2000; // adaptive PI correction bar * 100, signed (bit 13)
+// Bits 14-31 available for future fields
 
 // Phase transition structure for version 5+ headers
 #pragma pack(push, 1)
@@ -69,8 +70,14 @@ struct ShotLogHeader {
     PhaseTransition phaseTransitions[12]; // 12 × 29 = 348 bytes
     uint8_t phaseTransitionCount;         // 1 byte
 
+    // Adaptive brew metadata (v5 reserved area, bytes 0-5 of 53)
+    uint8_t  adaptiveActive;        // 1 if adaptive brew was enabled for this shot
+    uint8_t  channelingEvents;      // number of CHANNELING state entries during shot (capped at 255)
+    int16_t  avgCorrectionX10;      // mean PI correction bar * 10 (signed, e.g. +3 = +0.3 bar)
+    int16_t  maxCorrectionX10;      // max |correction| bar * 10 seen during shot
+
     // Future expansion - pad to 512 bytes total
-    uint8_t reserved_v5[53]; // Manual padding to reach 512 bytes
+    uint8_t reserved_v5[47]; // remaining padding (53 - 6 used = 47)
 };
 #pragma pack(pop)
 
@@ -96,6 +103,7 @@ struct ShotLogSample {
     uint16_t ev; // estimated weight * 10
     uint16_t pr; // puck resistance * 100
     uint16_t si; // system info bit-packed
+    int16_t  ac; // adaptive PI correction bar * 100 (signed; 0 when adaptive off)
 };
 
 static_assert(sizeof(ShotLogHeader) == SHOT_LOG_HEADER_SIZE, "ShotLogHeader size mismatch");

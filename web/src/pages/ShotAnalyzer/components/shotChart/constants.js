@@ -159,7 +159,9 @@ export const VISIBILITY_KEY_BY_LABEL = {
   Weight: 'weight',
   'Weight Flow': 'weightFlow',
   'Adaptive Correction': 'adaptiveCorrection',
-}; = {
+};
+
+export const INITIAL_VISIBILITY = {
   phaseNames: true,
   stops: true,
   brewModeLabel: true,

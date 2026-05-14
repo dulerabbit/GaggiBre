@@ -275,6 +275,8 @@ export function getLegendColorByLabel(colors) {
     'Adaptive Correction': colors.adaptiveCorrection,
   };
 }
+
+export function getTooltipColorByLabel(colors) {
   return {
     ...getLegendColorByLabel(colors),
     [WATER_DRAWN_PHASE_LABEL]: 'color-mix(in srgb, var(--statistics-summary-water) 84%, black)',
