@@ -38,6 +38,9 @@ class DefaultUI {
     void onNextProfile();
     void onPreviousProfile();
     void onProfileSelect();
+    void onProfileAdaptiveToggle();
+    void onSelectedProfileAdaptiveToggle();
+    void onBrewSettingsButton();
     void setBrightness(int brightness) {
         if (panelDriver) {
             panelDriver->setBrightness(brightness);
@@ -128,6 +131,9 @@ class DefaultUI {
     float pressure = 0.0f;
     float manualPressureTarget = 0.0f;
     int pressureScaling = DEFAULT_PRESSURE_SCALING;
+    int adaptiveStateVersion = 0;
+    unsigned long lastAdaptiveToggleMs = 0;
+    static constexpr unsigned long ADAPTIVE_TOGGLE_DEBOUNCE_MS = 350;
     int heatingFlash = 0;
     double bluetoothWeight = 0.0;
     BrewScreenState brewScreenState = BrewScreenState::Brew;

@@ -87,6 +87,10 @@ void ShotHistoryPlugin::setup(Controller *c, PluginManager *pm) {
            [this](Event const &event) { currentBluetoothWeight = event.getFloat("value"); });
     pm->on("boiler:currentTemperature:change", [this](Event const &event) { currentTemperature = event.getFloat("value"); });
     pm->on("pump:puck-resistance:change", [this](Event const &event) { currentPuckResistance = event.getFloat("value"); });
+    // Ensure index exists at startup so web clients can immediately resolve history.
+    if (!ensureIndexExists()) {
+        ESP_LOGW("ShotHistoryPlugin", "History index init failed during setup; will retry lazily");
+    }
     // Initialize rebuild state
     rebuildInProgress = false;
     xTaskCreatePinnedToCore(loopTask, "ShotHistoryPlugin::loop", configMINIMAL_STACK_SIZE * 6, this, 1, &taskHandle, 0);
@@ -103,6 +107,16 @@ void ShotHistoryPlugin::record() {
                 fs->mkdir("/h");
             }
             currentFile = fs->open("/h/" + currentId + ".slog", FILE_WRITE);
+            if (!currentFile && fs != &SPIFFS) {
+                // SD can be mounted but temporarily unwritable; fall back to SPIFFS to avoid dropping shots.
+                ESP_LOGW("ShotHistoryPlugin", "Primary history FS unavailable, falling back to SPIFFS for shot %s",
+                         currentId.c_str());
+                fs = &SPIFFS;
+                if (!fs->exists("/h")) {
+                    fs->mkdir("/h");
+                }
+                currentFile = fs->open("/h/" + currentId + ".slog", FILE_WRITE);
+            }
             if (currentFile) {
                 isFileOpen = true;
                 // Prepare header
@@ -122,6 +136,11 @@ void ShotHistoryPlugin::record() {
                 header.phaseTransitionCount = 0; // Initialize phase transition count
                 // Write header placeholder
                 currentFile.write(reinterpret_cast<const uint8_t *>(&header), sizeof(header));
+            } else {
+                ESP_LOGE("ShotHistoryPlugin", "Failed to open history file /h/%s.slog for write", currentId.c_str());
+                recording = false;
+                extendedRecording = false;
+                return;
             }
         }
         float btDiff = currentBluetoothWeight - lastBluetoothWeight;
@@ -288,7 +307,12 @@ void ShotHistoryPlugin::record() {
             indexEntry.profileName[sizeof(indexEntry.profileName) - 1] = '\0';
 
             if (!appendToIndex(indexEntry)) {
-                ESP_LOGE("ShotHistoryPlugin", "CRITICAL: Failed to add completed shot %u to index", indexEntry.id);
+                ESP_LOGW("ShotHistoryPlugin", "Index append failed for shot %u, attempting rebuild+retry", indexEntry.id);
+                rebuildIndex();
+                if (!appendToIndex(indexEntry)) {
+                    ESP_LOGE("ShotHistoryPlugin", "CRITICAL: Failed to add completed shot %u to index after rebuild",
+                             indexEntry.id);
+                }
             }
         }
     }

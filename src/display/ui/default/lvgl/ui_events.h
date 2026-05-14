@@ -16,6 +16,8 @@ void onNextProfile(lv_event_t *e);
 void onPreviousProfile(lv_event_t *e);
 void onProfileScreenLoad(lv_event_t *e);
 void onProfileLoad(lv_event_t *e);
+void onProfileAdaptiveToggle(lv_event_t *e);
+void onSelectedProfileAdaptiveToggle(lv_event_t *e);
 void onMenuScreenLoad(lv_event_t *e);
 void onStandby(lv_event_t *e);
 void onBrewScreen(lv_event_t *e);

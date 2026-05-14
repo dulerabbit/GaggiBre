@@ -516,6 +516,10 @@ void onNextProfile(lv_event_t *e) { controller.getUI()->onNextProfile(); }
 
 void onProfileLoad(lv_event_t *e) { controller.getUI()->onProfileSelect(); }
 
+void onProfileAdaptiveToggle(lv_event_t *e) { controller.getUI()->onProfileAdaptiveToggle(); }
+
+void onSelectedProfileAdaptiveToggle(lv_event_t *e) { controller.getUI()->onSelectedProfileAdaptiveToggle(); }
+
 void onProfileSelect(lv_event_t *e) { controller.getUI()->onProfileSwitch(); }
 
 void onFlush(lv_event_t *e) { controller.onFlush(); }
@@ -594,6 +598,7 @@ void onBrewScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_BrewScreen_upTempButton, 15);
     lv_obj_set_ext_click_area(ui_BrewScreen_downTempButton, 15);
     lv_obj_set_ext_click_area(ui_BrewScreen_tempContainer, 20);
+    lv_obj_set_ext_click_area(ui_BrewScreen_Label1, 20);
 }
 
 void onSimpleProcessScreenLoad(lv_event_t *e) {
@@ -616,7 +621,7 @@ void onGrindScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_GrindScreen_ImgButton2, 20);
 }
 
-void onProfileSettings(lv_event_t *e) { controller.getUI()->changeBrewScreenMode(BrewScreenState::Settings); }
+void onProfileSettings(lv_event_t *e) { controller.getUI()->onBrewSettingsButton(); }
 
 void onProfileSave(lv_event_t *e) {
     controller.onProfileSave();

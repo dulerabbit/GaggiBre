@@ -428,6 +428,79 @@ void DefaultUI::onProfileSelect() {
     changeScreen(&ui_BrewScreen, ui_BrewScreen_screen_init);
 }
 
+void DefaultUI::onProfileAdaptiveToggle() {
+    const unsigned long now = millis();
+    if (now - lastAdaptiveToggleMs < ADAPTIVE_TOGGLE_DEBOUNCE_MS) {
+        return;
+    }
+    lastAdaptiveToggleMs = now;
+
+    if (currentProfileIdx >= favoritedProfileIds.size()) {
+        return;
+    }
+
+    const String &profileId = favoritedProfileIds[currentProfileIdx];
+    Profile profile{};
+    if (!profileManager->loadProfile(profileId, profile)) {
+        return;
+    }
+
+    profile.adaptiveBrew = !profile.adaptiveBrew;
+    if (!profileManager->saveProfile(profile)) {
+        return;
+    }
+
+    favoritedProfiles[currentProfileIdx] = profile;
+    if (profileId == selectedProfileId) {
+        selectedProfile = profile;
+    }
+    adaptiveStateVersion++;
+    profileDirty = true;
+    rerender = true;
+}
+
+void DefaultUI::onSelectedProfileAdaptiveToggle() {
+    const unsigned long now = millis();
+    if (now - lastAdaptiveToggleMs < ADAPTIVE_TOGGLE_DEBOUNCE_MS) {
+        return;
+    }
+    lastAdaptiveToggleMs = now;
+
+    Profile profile{};
+    if (!profileManager->loadSelectedProfile(profile)) {
+        return;
+    }
+
+    profile.adaptiveBrew = !profile.adaptiveBrew;
+    if (!profileManager->saveProfile(profile)) {
+        return;
+    }
+
+    selectedProfile = profile;
+    selectedProfileId = profile.id;
+
+    for (size_t i = 0; i < favoritedProfileIds.size(); ++i) {
+        if (favoritedProfileIds[i] == profile.id) {
+            favoritedProfiles[i] = profile;
+            break;
+        }
+    }
+
+    adaptiveStateVersion++;
+    profileDirty = true;
+    rerender = true;
+}
+
+void DefaultUI::onBrewSettingsButton() {
+    if (brewScreenState == BrewScreenState::Brew) {
+        changeBrewScreenMode(BrewScreenState::Settings);
+        return;
+    }
+
+    onSelectedProfileAdaptiveToggle();
+    changeBrewScreenMode(BrewScreenState::Brew);
+}
+
 void DefaultUI::onVolumetricDelete() {
     controller->onVolumetricDelete();
     profileVolumetric = profileManager->getSelectedProfile().isVolumetric();
@@ -728,8 +801,10 @@ void DefaultUI::setupReactive() {
                           },
                           &active);
     effect_mgr.use_effect([=] { return currentScreen == ui_BrewScreen; },
-                          [=] { lv_label_set_text(ui_BrewScreen_profileName, selectedProfile.label.c_str()); },
-                          &selectedProfileId);
+                          [=] {
+                              lv_label_set_text(ui_BrewScreen_profileName, selectedProfile.label.c_str());
+                          },
+                          &selectedProfileId, &adaptiveStateVersion);
 
     effect_mgr.use_effect(
         [=] { return currentScreen == ui_ProfileScreen; },
@@ -737,7 +812,11 @@ void DefaultUI::setupReactive() {
             if (profileLoaded) {
                 _ui_flag_modify(ui_ProfileScreen_profileDetails, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_REMOVE);
                 _ui_flag_modify(ui_ProfileScreen_loadingSpinner, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
-                lv_label_set_text(ui_ProfileScreen_profileName, favoritedProfiles[currentProfileIdx].label.c_str());
+                String profileLabel = favoritedProfiles[currentProfileIdx].label;
+                if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                    profileLabel += favoritedProfiles[currentProfileIdx].adaptiveBrew ? " [A]" : " [ ]";
+                }
+                lv_label_set_text(ui_ProfileScreen_profileName, profileLabel.c_str());
                 lv_label_set_text(ui_ProfileScreen_mainLabel, currentProfileIdx == 0 ? "Current profile" : "Select profile");
 
                 const auto minutes = static_cast<int>(favoritedProfiles[currentProfileIdx].getTotalDuration() / 60.0 - 0.5);
@@ -795,6 +874,28 @@ void DefaultUI::setupReactive() {
                               }
                           },
                           &bluetoothWeight, &volumetricAvailable, &bluetoothScales);
+    effect_mgr.use_effect(
+        [=] { return currentScreen == ui_BrewScreen; },
+        [=]() {
+            const lv_color_t textColor = lv_color_hex(0xFFFFFF);
+            lv_obj_clear_flag(ui_BrewScreen_mainLabel3, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_BrewScreen_targetTemp, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_BrewScreen_targetDuration, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_BrewScreen_weightLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_style_text_color(ui_BrewScreen_mainLabel3, textColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_color(ui_BrewScreen_targetTemp, textColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_color(ui_BrewScreen_targetDuration, textColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_color(ui_BrewScreen_weightLabel, textColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_opa(ui_BrewScreen_mainLabel3, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_opa(ui_BrewScreen_targetTemp, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_opa(ui_BrewScreen_targetDuration, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_opa(ui_BrewScreen_weightLabel, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_color(ui_BrewScreen_profileName, textColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_opa(ui_BrewScreen_profileName, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_color(ui_BrewScreen_Label1, textColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_opa(ui_BrewScreen_Label1, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+        },
+        &brewScreenState, &adaptiveStateVersion, &bluetoothScales, &volumetricAvailable);
     effect_mgr.use_effect([=] { return currentScreen == ui_GrindScreen; },
                           [=]() {
                               if (volumetricAvailable && bluetoothScales) {
@@ -815,11 +916,34 @@ void DefaultUI::setupReactive() {
             _ui_flag_modify(ui_BrewScreen_profileInfo, LV_OBJ_FLAG_HIDDEN, brewScreenState == BrewScreenState::Brew);
             _ui_flag_modify(ui_BrewScreen_modeSwitch, LV_OBJ_FLAG_HIDDEN,
                             brewScreenState == BrewScreenState::Brew && volumetricAvailable);
+            if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                const bool adaptiveOn = selectedProfile.adaptiveBrew;
+                lv_label_set_text_fmt(ui_BrewScreen_Label1, "Adaptive %s", adaptiveOn ? "ON" : "OFF");
+                lv_obj_set_style_radius(ui_BrewScreen_Label1, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_pad_left(ui_BrewScreen_Label1, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_pad_right(ui_BrewScreen_Label1, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_pad_top(ui_BrewScreen_Label1, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_pad_bottom(ui_BrewScreen_Label1, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_color(ui_BrewScreen_Label1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_width(ui_BrewScreen_Label1, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_70 : LV_OPA_40,
+                                            LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(ui_BrewScreen_Label1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_30 : LV_OPA_TRANSP,
+                                        LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_text_color(ui_BrewScreen_Label1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_text_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_COVER : LV_OPA_70,
+                                          LV_PART_MAIN | LV_STATE_DEFAULT);
+            } else {
+                lv_label_set_text(ui_BrewScreen_Label1, "Selected profile");
+                lv_obj_set_style_bg_opa(ui_BrewScreen_Label1, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_opa(ui_BrewScreen_Label1, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+            }
             if (volumetricAvailable) {
                 lv_img_set_src(ui_BrewScreen_volumetricButton, bluetoothScales ? &ui_img_1424216268 : &ui_img_flowmeter_png);
             }
         },
-        &brewScreenState, &volumetricAvailable, &bluetoothScales);
+        &brewScreenState, &volumetricAvailable, &bluetoothScales, &adaptiveStateVersion);
     effect_mgr.use_effect(
         [=] { return currentScreen == ui_BrewScreen; },
         [=]() {
@@ -944,6 +1068,23 @@ void DefaultUI::updateStatusScreen() const {
 
     const auto phase = brewProcess->currentPhase;
 
+    const lv_color_t statusTextColor = lv_color_hex(0xFFFFFF);
+    lv_obj_clear_flag(ui_StatusScreen_targetTemp, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_StatusScreen_targetDuration, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_StatusScreen_currentDuration, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_StatusScreen_stepLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_StatusScreen_phaseLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_text_color(ui_StatusScreen_targetTemp, statusTextColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_StatusScreen_targetDuration, statusTextColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_StatusScreen_currentDuration, statusTextColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_StatusScreen_stepLabel, statusTextColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_StatusScreen_phaseLabel, statusTextColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_StatusScreen_targetTemp, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_StatusScreen_targetDuration, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_StatusScreen_currentDuration, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_StatusScreen_stepLabel, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_StatusScreen_phaseLabel, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     unsigned long now = millis();
     if (!process->isActive()) {
         // Add bounds check for finished timestamp
@@ -959,6 +1100,38 @@ void DefaultUI::updateStatusScreen() const {
     } else if (controller->getSettings().isDelayAdjust() && !process->isComplete()) {
         phaseText = "Calibrating...";
     }
+
+    bool adaptiveActive = brewProcess->profile.adaptiveBrew &&
+                          adaptive::AdaptiveBrewEngine::isFeatureEnabled() &&
+                          process->isActive();
+
+    lv_color_t labelColor = lv_color_hex(0xFFFFFF);
+    lv_opa_t labelOpa = LV_OPA_COVER;
+
+    if (adaptiveActive) {
+        const auto decision = controller->getLastAdaptiveDecision();
+        if (decision.channelingDetected) {
+            phaseText = LV_SYMBOL_WARNING " FLOW INSTABILITY";
+            labelColor = lv_color_hex(0xFF8C00);
+        } else if (decision.correctionApplied >= 0.1F) {
+            char buf[18];
+            snprintf(buf, sizeof(buf), LV_SYMBOL_UP " A %+.1f bar", decision.correctionApplied);
+            phaseText = buf;
+            labelColor = lv_color_hex(0xFF4444);
+        } else if (decision.correctionApplied <= -0.1F) {
+            char buf[18];
+            snprintf(buf, sizeof(buf), LV_SYMBOL_DOWN " A %+.1f bar", decision.correctionApplied);
+            phaseText = buf;
+            labelColor = lv_color_hex(0x4488FF);
+        } else {
+            phaseText = "ADAPTIVE";
+            labelOpa = LV_OPA_70;
+        }
+    }
+
+    lv_label_set_long_mode(ui_StatusScreen_phaseLabel, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_color(ui_StatusScreen_phaseLabel, labelColor, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_StatusScreen_phaseLabel, labelOpa, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(ui_StatusScreen_phaseLabel, phaseText.c_str());
 
     // Add bounds check for processStarted timestamp
@@ -1016,7 +1189,10 @@ void DefaultUI::updateStatusScreen() const {
 
     // Brew finished adjustments
     if (process->isActive()) {
+        lv_obj_clear_flag(ui_StatusScreen_barContainer, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_StatusScreen_labelContainer, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ui_StatusScreen_brewVolume, LV_OBJ_FLAG_HIDDEN);
+        lv_imgbtn_set_src(ui_StatusScreen_pauseButton, LV_IMGBTN_STATE_RELEASED, nullptr, &ui_img_1456692430, nullptr);
     } else {
         // Re-validate brewProcess pointer before accessing members
         if (brewProcess && brewProcess->target == ProcessTarget::VOLUMETRIC) {
