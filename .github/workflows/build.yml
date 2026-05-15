@@ -62,6 +62,10 @@ jobs:
           pio run -t buildfs -e display
           cp .pio/build/display/spiffs.bin out/display-filesystem.bin
           cp .pio/build/display/spiffs.bin out/display-headless-filesystem.bin
+          cp scripts/flasher/index.html out/index.html
+          cp scripts/flasher/manifest-display.json out/manifest-display.json
+          cp scripts/flasher/manifest-headless.json out/manifest-headless.json
+          cp scripts/flasher/manifest-controller.json out/manifest-controller.json
           mkdir -p upload/controller upload/display upload/headless
           cp .pio/build/display/spiffs.bin upload/display/filesystem.bin
           cp .pio/build/display/spiffs.bin upload/headless/filesystem.bin
@@ -128,13 +132,7 @@ jobs:
           generateReleaseNotes: true
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
-        - name: Prepare flasher page
-          run: |
-            cp scripts/flasher/index.html release/index.html
-            cp scripts/flasher/manifest-display.json release/manifest-display.json
-            cp scripts/flasher/manifest-headless.json release/manifest-headless.json
-            cp scripts/flasher/manifest-controller.json release/manifest-controller.json
-        - name: Deploy to GitHub Pages (stable)
+      - name: Deploy to GitHub Pages (stable)
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
