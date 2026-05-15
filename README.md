@@ -1,56 +1,79 @@
+# GaggiBre
+
 <p align="center">
 <img src="docs/assets/logo.png" alt="Logo" width="250px" />
 <br />
-  
-[![](https://dcbadge.vercel.app/api/server/APw7rgPGPf)](https://discord.gg/APw7rgPGPf)
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
-[![Sonar QG][sonar-shield]][sonar-url]
-[![Sonar Violations][sonar-violations]][sonar-url]
-[![Sonar Tech Debt][sonar-tech-debt]][sonar-url]
 
+[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 
 </p>
 
-This project upgrades a Gaggia espresso machine with smart controls to improve your coffee-making experience. By adding a display and custom electronics, you can monitor and control the machine more easily.
+**GaggiBre** is a community fork of [GaggiMate](https://github.com/jniebuhr/gaggimate) — the open-source smart controller for Gaggia espresso machines. It builds on everything GaggiMate provides and adds an **adaptive PI brew controller** that automatically adjusts pump pressure in real time based on live flow data, so you get a more consistent shot without manually tweaking profiles.
 
-<img src="docs/assets/gaggimate_poster.jpg" alt="Gaggia Classic Installation" width="500" />
+## What's Different from GaggiMate
 
-## Features
+GaggiBre is a feature branch, not a replacement. The hardware, PCB, and web flasher are identical. The differences are purely in firmware behaviour:
 
-- **Temperature Control**: Monitor the boiler temperature to ensure optimal brewing conditions.
-- **Brew timer**: Set a target duration and run the brewing for the specific time.
-- **Steam and Hot Water mode**: Control the pump and valve to run the respective task.
-- **Safety Features**: Automatic shutoff if the system becomes unresponsive or overheats.
-- **User Interface**: Simple, intuitive display to control and monitor the machine.
+| Feature | GaggiMate | GaggiBre |
+|---|---|---|
+| Pressure profiling | ✅ Manual profiles | ✅ Manual profiles |
+| Adaptive brew control | ❌ | ✅ Per-profile PI controller |
+| Flow-based channeling detection | ❌ | ✅ Live annotation in shot log |
+| Adaptive metadata in shot history | ❌ | ✅ Visible in Shot Analyzer |
+| Toggle adaptive on/off per profile | ❌ | ✅ Long-press or UI toggle |
 
-## Screenshots and Images
+### Adaptive PI Brew Controller
 
-<img src="docs/assets/standby-screen.png" alt="Standby Screen" width="300px" />
-<img src="docs/assets/brew-screen.png" alt="Brew Screen" width="300px" />
-<img src="docs/assets/pcb_render.png" alt="PCB Render" width="300px" />
+When adaptive mode is enabled on a profile, the firmware runs a closed-loop PI controller that watches actual flow rate against the target and trims the pump output to compensate. If channeling is detected (a sudden flow spike mid-shot) it logs the event and annotates the shot chart so you can see exactly when it happened.
 
-### How to buy
+Adaptive mode is **per-profile** and **opt-in** — all existing profiles behave exactly as they do in stock GaggiMate unless you enable it.
 
-You can buy your kit on https://shop.gaggimate.eu/
+## Hardware
 
-## How It Works
+GaggiBre runs on the same hardware as GaggiMate. You can buy a kit or build your own:
 
-The display allows you to control the espresso machine and see live temperature updates. If the machine becomes unresponsive or the temperature goes too high, it will automatically turn off for safety.
+- **Kit**: [shop.gaggimate.eu](https://shop.gaggimate.eu/)
+- **Docs & assembly**: [gaggimate.eu](https://gaggimate.eu/)
+- **PCB files**: see the `pcb/` directory
 
-## Docs
+## Flashing
 
-The docs were moved to [https://gaggimate.eu/](https://gaggimate.eu/). You can find all sourcing and assembly information there.
-Additional documentation for the WebSocket API can be found in [docs/websocket-api.yaml](docs/websocket-api.yaml).
+### Web Flasher (easiest)
 
+The latest stable release is available via the GitHub Pages web flasher — no tools required, just a USB cable and Chrome/Edge:
+
+➡️ **[https://dulerabbit.github.io/GaggiBre/stable/](https://dulerabbit.github.io/GaggiBre/stable/)**
+
+### Manual / PlatformIO
+
+```bash
+# Clone including submodules
+git clone --recursive https://github.com/dulerabbit/GaggiBre.git
+cd GaggiBre
+
+# Build and flash (display variant)
+pio run -e display -t upload --upload-port <PORT>
+
+# Build and flash filesystem
+pio run -e display -t uploadfs --upload-port <PORT>
+```
+
+## Features (inherited from GaggiMate)
+
+- **Temperature Control** — boiler PID with configurable targets
+- **Pressure Profiling** — multi-phase profiles with ramp, hold, and flow control
+- **Brew Timer** — target duration with automatic stop
+- **Steam & Hot Water** — dedicated modes for non-espresso tasks
+- **Shot History** — full shot log with pressure, temperature, and flow charts
+- **OTA Updates** — over-the-air firmware updates from the web UI
+- **Web UI** — mobile-friendly interface served from the device itself
+- **mDNS** — reach the device at `http://gaggimate.local` on your local network
+- **Safety** — automatic shutoff on overtemp or watchdog timeout
 
 ## License
 
-This work is licensed under CC BY-NC-SA 4.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/
+This work is licensed under [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). It is a derivative of [GaggiMate](https://github.com/jniebuhr/gaggimate) by Jan Niebuhr, used under the same license.
 
-[sonar-violations]: https://img.shields.io/sonar/blocker_violations/jniebuhr_gaggimate?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge
-[sonar-shield]: https://img.shields.io/sonar/quality_gate/jniebuhr_gaggimate?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge
-[sonar-tech-debt]: https://img.shields.io/sonar/tech_debt/jniebuhr_gaggimate?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge
-[sonar-url]: https://sonarcloud.io/project/overview?id=jniebuhr_gaggimate
 [cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
 [cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
 [cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg?style=for-the-badge
