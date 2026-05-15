@@ -1123,7 +1123,13 @@ void DefaultUI::updateStatusScreen() const {
 
     // Brew finished adjustments
     if (process->isActive()) {
-        lv_obj_add_flag(ui_StatusScreen_brewVolume, LV_OBJ_FLAG_HIDDEN);
+        // Show weight during active brew if in volumetric mode
+        if (brewProcess && brewProcess->target == ProcessTarget::VOLUMETRIC) {
+            lv_obj_clear_flag(ui_StatusScreen_brewVolume, LV_OBJ_FLAG_HIDDEN);
+            lv_label_set_text_fmt(ui_StatusScreen_brewVolume, "%.1lfg", brewProcess->currentVolume);
+        } else {
+            lv_obj_add_flag(ui_StatusScreen_brewVolume, LV_OBJ_FLAG_HIDDEN);
+        }
     } else {
         // Re-validate brewProcess pointer before accessing members
         if (brewProcess && brewProcess->target == ProcessTarget::VOLUMETRIC) {

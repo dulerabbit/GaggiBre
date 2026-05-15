@@ -64,6 +64,7 @@ export const CHART_COLOR_FALLBACKS = {
   weightFlow: '#6d28d9',
   phaseLine: 'rgba(107, 114, 128, 0.5)',
   stopLabel: 'rgba(220, 38, 38, 0.85)',
+  adaptiveCorrection: '#FF8C00',
 };
 
 export const CHART_COLOR_TOKEN_MAP = {
@@ -76,13 +77,14 @@ export const CHART_COLOR_TOKEN_MAP = {
   weightFlow: '--analyzer-weightflow-anchor',
   phaseLine: '--analyzer-phase-line',
   stopLabel: '--analyzer-stop-label',
+  adaptiveCorrection: '--analyzer-adaptive-correction',
 };
 
 export const WATER_DRAWN_PHASE_LABEL = 'Water Drawn (Phase)';
 export const WATER_DRAWN_TOTAL_LABEL = 'Water Drawn (Total)';
 
 export const LEGEND_BLOCK_LABELS = new Set(['Phase Names', 'Stops']);
-export const LEGEND_DASHED_LABELS = new Set(['Target T', 'Target P', 'Target F']);
+export const LEGEND_DASHED_LABELS = new Set(['Target T', 'Target P', 'Target F', 'Adaptive Correction']);
 export const LEGEND_THIN_LINE_LABELS = new Set([
   'Target T',
   'Target P',
@@ -90,6 +92,7 @@ export const LEGEND_THIN_LINE_LABELS = new Set([
   'Puck Flow',
   'Weight',
   'Weight Flow',
+  'Adaptive Correction',
 ]);
 
 export const TOOLTIP_WATER_LABELS = new Set([WATER_DRAWN_PHASE_LABEL, WATER_DRAWN_TOTAL_LABEL]);
@@ -105,6 +108,7 @@ export const LEGEND_ORDER = [
   'Puck Flow',
   'Weight',
   'Weight Flow',
+  'Adaptive Correction',
   'Temp',
   'Target T',
 ];
@@ -121,6 +125,7 @@ export const TOOLTIP_ORDER = [
   'Weight',
   WATER_DRAWN_PHASE_LABEL,
   WATER_DRAWN_TOTAL_LABEL,
+  'Adaptive Correction',
   'Temp',
   'Target T',
 ];
@@ -140,6 +145,7 @@ export const TOOLTIP_GROUP_BY_LABEL = {
   'Weight Flow': 'weight',
   [WATER_DRAWN_PHASE_LABEL]: 'water',
   [WATER_DRAWN_TOTAL_LABEL]: 'water',
+  'Adaptive Correction': 'adaptive',
   Temp: 'temp',
   'Target T': 'temp',
 };
@@ -156,6 +162,7 @@ export const VISIBILITY_KEY_BY_LABEL = {
   'Puck Flow': 'puckFlow',
   Weight: 'weight',
   'Weight Flow': 'weightFlow',
+  'Adaptive Correction': 'adaptiveCorrection',
 };
 
 export const INITIAL_VISIBILITY = {
@@ -170,6 +177,7 @@ export const INITIAL_VISIBILITY = {
   puckFlow: true,
   weight: true,
   weightFlow: true,
+  adaptiveCorrection: true,
 };
 
 export const UNIT_BY_LABEL = {
@@ -182,6 +190,7 @@ export const UNIT_BY_LABEL = {
   'Puck Flow': 'ml/s',
   Weight: 'g',
   'Weight Flow': 'g/s',
+  'Adaptive Correction': 'bar',
   [WATER_DRAWN_PHASE_LABEL]: 'ml',
   [WATER_DRAWN_TOTAL_LABEL]: 'ml',
 };

@@ -115,6 +115,7 @@ export function getLegendColorByLabel(colors) {
     'Puck Flow': colors.puckFlow,
     Weight: colors.weight,
     'Weight Flow': colors.weightFlow,
+    'Adaptive Correction': colors.adaptiveCorrection,
   };
 }
 

@@ -75,7 +75,7 @@ export default function HistoryCard({ shot, onDelete, onLoad, onNotesChanged }) 
     [onNotesChanged],
   );
   const profileTitle = shot.profile || 'Unknown Profile';
-  let formattedDate = 'No timestamp available';
+  let formattedDate = 'No timestamp (device clock unavailable when shot was saved)';
   if (date.getFullYear() > 1970) {
     formattedDate =
       date.toLocaleDateString() +
@@ -237,7 +237,7 @@ export default function HistoryCard({ shot, onDelete, onLoad, onNotesChanged }) 
             </div>
 
             {/* Stats Row */}
-            <div className='text-base-content/80 mb-1 flex flex-row items-center gap-4 text-sm'>
+            <div className='text-base-content/80 mb-1 flex flex-row flex-wrap items-center gap-4 text-sm'>
               <div className='flex items-center gap-1'>
                 <FontAwesomeIcon icon={faClock} className='h-4 w-4' />
                 <span>{(shot.duration / 1000).toFixed(1)}s</span>
@@ -247,6 +247,25 @@ export default function HistoryCard({ shot, onDelete, onLoad, onNotesChanged }) 
                 <div className='flex items-center gap-1'>
                   <FontAwesomeIcon icon={faWeightScale} className='h-4 w-4' />
                   <span>{round2(shot.volume)}g</span>
+                </div>
+              )}
+
+              {shot.adaptiveMeta && (
+                <div className='flex items-center gap-1.5'>
+                  <span className='inline-flex items-center gap-1 rounded-full border border-orange-400/50 bg-orange-400/10 px-2 py-0.5 text-xs font-semibold text-orange-400'>
+                    ADAPTIVE
+                    {shot.adaptiveMeta.channelingEvents > 0 && (
+                      <span className='rounded-full bg-orange-400/20 px-1.5 text-orange-300'>
+                        {shot.adaptiveMeta.channelingEvents} CH
+                      </span>
+                    )}
+                  </span>
+                  {shot.adaptiveMeta.avgCorrection != null && (
+                    <span className='text-base-content/50 text-xs'>
+                      avg {shot.adaptiveMeta.avgCorrection >= 0 ? '+' : ''}
+                      {shot.adaptiveMeta.avgCorrection.toFixed(2)} bar
+                    </span>
+                  )}
                 </div>
               )}
 

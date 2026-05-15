@@ -1,0 +1,45 @@
+{
+  "id": "descale",
+  "label": "[Utility] Descale",
+  "type": "standard",
+  "description": "Pump/descale cycle for cleaning and rinsing.",
+  "temperature": 93,
+  "utility": true,
+  "phases": [
+    {
+      "name": "Fill Circuit",
+      "phase": "brew",
+      "valve": 1,
+      "duration": 12,
+      "pump": 100
+    },
+    {
+      "name": "Soak",
+      "phase": "brew",
+      "valve": 0,
+      "duration": 20,
+      "pump": 0
+    },
+    {
+      "name": "Flush",
+      "phase": "brew",
+      "valve": 1,
+      "duration": 12,
+      "pump": 100
+    },
+    {
+      "name": "Soak",
+      "phase": "brew",
+      "valve": 0,
+      "duration": 20,
+      "pump": 0
+    },
+    {
+      "name": "Final Rinse",
+      "phase": "brew",
+      "valve": 1,
+      "duration": 20,
+      "pump": 100
+    }
+  ]
+}

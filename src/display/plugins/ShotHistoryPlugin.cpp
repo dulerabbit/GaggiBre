@@ -15,6 +15,7 @@ constexpr float PRESSURE_SCALE = 10.0f;
 constexpr float FLOW_SCALE = 100.0f;
 constexpr float WEIGHT_SCALE = 10.0f;
 constexpr float RESISTANCE_SCALE = 100.0f;
+constexpr float CORRECTION_SCALE = 100.0f;
 
 constexpr uint16_t TEMP_MAX_VALUE = 2000;    // 200.0 °C
 constexpr uint16_t PRESSURE_MAX_VALUE = 200; // 20.0 bar
@@ -22,6 +23,7 @@ constexpr uint16_t WEIGHT_MAX_VALUE = 10000; // 1000.0 g
 constexpr uint16_t RESISTANCE_MAX_VALUE = 0xFFFF;
 constexpr int16_t FLOW_MIN_VALUE = -2000; // -20.00 ml/s
 constexpr int16_t FLOW_MAX_VALUE = 2000;  //  20.00 ml/s
+constexpr unsigned long MIN_RETAINED_SHOT_MS = 2000; // Keep quick test pulls; drop only near-instant aborts
 
 uint16_t encodeUnsigned(float value, float scale, uint16_t maxValue) {
     if (!std::isfinite(value)) {
@@ -92,8 +94,10 @@ void ShotHistoryPlugin::setup(Controller *c, PluginManager *pm) {
 
 void ShotHistoryPlugin::record() {
     bool shouldRecord = recording || extendedRecording;
+    Process *activeProcess = controller != nullptr ? controller->getProcess() : nullptr;
+    const bool brewProcessActive = (activeProcess != nullptr && activeProcess->getType() == MODE_BREW);
 
-    if (shouldRecord && (controller->getMode() == MODE_BREW || extendedRecording)) {
+    if (shouldRecord && (brewProcessActive || extendedRecording)) {
         if (!isFileOpen) {
             if (!fs->exists("/h")) {
                 fs->mkdir("/h");
@@ -140,37 +144,48 @@ void ShotHistoryPlugin::record() {
         sample.ev = encodeUnsigned(currentEstimatedWeight, WEIGHT_SCALE, WEIGHT_MAX_VALUE);
         sample.pr = encodeUnsigned(currentPuckResistance, RESISTANCE_SCALE, RESISTANCE_MAX_VALUE);
         sample.si = getSystemInfo(); // Pack system state information
+        // Adaptive PI correction per tick: store signed bar * 100 clamped to int16 range
+        {
+            float corr = 0.0F;
+            if (brewProcessActive) {
+                auto *bp = static_cast<BrewProcess *>(activeProcess);
+                if (bp->profile.adaptiveBrew && adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                    corr = controller->getLastAdaptiveDecision().correctionApplied;
+                }
+            }
+            float scaled = corr * CORRECTION_SCALE;
+            if (scaled > 32767.0F) scaled = 32767.0F;
+            if (scaled < -32768.0F) scaled = -32768.0F;
+            sample.ac = static_cast<int16_t>(scaled);
+        }
 
         // Track phase transitions
-        if (controller->getMode() == MODE_BREW) {
-            Process *process = controller->getProcess();
-            if (process != nullptr && process->getType() == MODE_BREW) {
-                auto *brewProcess = static_cast<BrewProcess *>(process);
-                uint8_t currentPhase = static_cast<uint8_t>(brewProcess->phaseIndex);
+        if (brewProcessActive) {
+            auto *brewProcess = static_cast<BrewProcess *>(activeProcess);
+            uint8_t currentPhase = static_cast<uint8_t>(brewProcess->phaseIndex);
 
-                // Check for phase transition
-                if (currentPhase != lastRecordedPhase) {
-                    recordPhaseTransition(currentPhase, sampleCount);
-                    lastRecordedPhase = currentPhase;
-                }
+            // Check for phase transition
+            if (currentPhase != lastRecordedPhase) {
+                recordPhaseTransition(currentPhase, sampleCount);
+                lastRecordedPhase = currentPhase;
+            }
 
-                // Accumulate adaptive brew statistics
-                if (brewProcess->profile.adaptiveBrew &&
-                    adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
-                    const auto decision = controller->getLastAdaptiveDecision();
-                    if (decision.confidence > 0.0F || adaptiveSampleCount > 0) {
-                        adaptiveSampleCount++;
-                        adaptiveCorrectionSum += decision.correctionApplied;
-                        const float absCorr = fabsf(decision.correctionApplied);
-                        if (absCorr > adaptiveMaxAbsCorrection) {
-                            adaptiveMaxAbsCorrection = absCorr;
-                        }
-                        if (decision.channelingDetected && !lastChannelingState) {
-                            // Leading edge: new channeling event
-                            if (adaptiveChannelingEvents < 255U) adaptiveChannelingEvents++;
-                        }
-                        lastChannelingState = decision.channelingDetected;
+            // Accumulate adaptive brew statistics
+            if (brewProcess->profile.adaptiveBrew &&
+                adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+                const auto decision = controller->getLastAdaptiveDecision();
+                if (decision.confidence > 0.0F || adaptiveSampleCount > 0) {
+                    adaptiveSampleCount++;
+                    adaptiveCorrectionSum += decision.correctionApplied;
+                    const float absCorr = fabsf(decision.correctionApplied);
+                    if (absCorr > adaptiveMaxAbsCorrection) {
+                        adaptiveMaxAbsCorrection = absCorr;
                     }
+                    if (decision.channelingDetected && !lastChannelingState) {
+                        // Leading edge: new channeling event
+                        if (adaptiveChannelingEvents < 255U) adaptiveChannelingEvents++;
+                    }
+                    lastChannelingState = decision.channelingDetected;
                 }
             }
         }
@@ -246,7 +261,7 @@ void ShotHistoryPlugin::record() {
         currentFile.close();
         isFileOpen = false;
         unsigned long duration = header.durationMs;
-        if (duration <= 7500) { // Exclude failed shots and flushes
+        if (duration <= MIN_RETAINED_SHOT_MS) { // Exclude near-instant aborts only
             fs->remove("/h/" + currentId + ".slog");
 
             // If we created an early index entry, mark it as deleted
@@ -273,7 +288,19 @@ void ShotHistoryPlugin::record() {
             indexEntry.profileName[sizeof(indexEntry.profileName) - 1] = '\0';
 
             if (!appendToIndex(indexEntry)) {
-                ESP_LOGE("ShotHistoryPlugin", "CRITICAL: Failed to add completed shot %u to index", indexEntry.id);
+                ESP_LOGW("ShotHistoryPlugin", "Index append failed for shot %u – retrying on SPIFFS fallback", indexEntry.id);
+                if (fs != &SPIFFS) {
+                    fs = &SPIFFS;
+                    if (!fs->exists("/h")) {
+                        fs->mkdir("/h");
+                    }
+                    ensureIndexExists();
+                    if (!appendToIndex(indexEntry)) {
+                        ESP_LOGE("ShotHistoryPlugin", "CRITICAL: Failed to add shot %u to index even on SPIFFS", indexEntry.id);
+                    }
+                } else {
+                    ESP_LOGE("ShotHistoryPlugin", "CRITICAL: Failed to add completed shot %u to index", indexEntry.id);
+                }
             }
         }
     }

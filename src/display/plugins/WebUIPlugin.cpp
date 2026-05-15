@@ -45,7 +45,10 @@ void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) 
         apMode = event.getInt("AP");
         start();
     });
-    pluginManager->on("controller:wifi:disconnect", [this](Event const &) { stop(); });
+    pluginManager->on("controller:wifi:disconnect", [this](Event const &) {
+        // Keep server alive during transient STA drops; AP fallback remains available.
+        ESP_LOGI("WebUIPlugin", "WiFi disconnect event received; keeping webserver running");
+    });
     pluginManager->on("controller:ready", [this](Event const &) {
         ota->setControllerVersion(controller->getSystemInfo().version);
         ota->init(controller->getClientController()->getClient());
@@ -237,17 +240,27 @@ void WebUIPlugin::setupServer() {
 }
 
 void WebUIPlugin::start() {
-    stop();
-    server.begin();
-    ESP_LOGI("WebUIPlugin", "Started webserver");
-    if (apMode) {
-        dnsServer = new DNSServer();
-        dnsServer->setTTL(3600);
-        dnsServer->start(53, "*", WIFI_AP_IP);
-        ESP_LOGI("WebUIPlugin", "Started catchall DNS for captive portal");
+    if (!serverRunning) {
+        server.begin();
+        ESP_LOGI("WebUIPlugin", "Started webserver");
+        lastUpdateCheck = millis();
+        serverRunning = true;
     }
-    lastUpdateCheck = millis();
-    serverRunning = true;
+
+    if (apMode) {
+        if (dnsServer == nullptr) {
+            dnsServer = new DNSServer();
+            dnsServer->setTTL(3600);
+            dnsServer->start(53, "*", WIFI_AP_IP);
+            ESP_LOGI("WebUIPlugin", "Started catchall DNS for captive portal");
+        }
+    } else if (dnsServer != nullptr) {
+        // STA-only mode: captive DNS is unnecessary.
+        dnsServer->stop();
+        delete dnsServer;
+        dnsServer = nullptr;
+        ESP_LOGI("WebUIPlugin", "Stopped captive DNS (STA mode)");
+    }
 }
 
 void WebUIPlugin::stop() {

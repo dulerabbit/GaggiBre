@@ -62,6 +62,7 @@ function ProfileCard({
   data,
   onDelete,
   onSelect,
+  onToggleAdaptive,
   onFavorite,
   onUnfavorite,
   onDuplicate,
@@ -233,6 +234,12 @@ function ProfileCard({
                 >
                   {typeText}
                 </span>
+                <span
+                  className={`badge badge-sm lg:badge-md font-medium ${data.adaptiveBrew ? 'badge-warning' : 'badge-outline'}`}
+                  aria-label={`Adaptive brew ${data.adaptiveBrew ? 'enabled' : 'disabled'}`}
+                >
+                  A {data.adaptiveBrew ? 'ON' : 'OFF'}
+                </span>
                 <button
                   onClick={onToggleDetails}
                   className='btn btn-xs btn-ghost self-start'
@@ -277,6 +284,20 @@ function ProfileCard({
                     }}
                   >
                     <ul className='menu' role='none'>
+                      <li role='none'>
+                        <button
+                          role='menuitem'
+                          onClick={() => {
+                            onToggleAdaptive(data.id, !data.adaptiveBrew);
+                            closeMenu();
+                          }}
+                          className='justify-start text-warning'
+                          aria-label={`${data.adaptiveBrew ? 'Disable' : 'Enable'} adaptive brew for ${data.label}`}
+                        >
+                          <span className='font-semibold'>A</span>
+                          <span>{data.adaptiveBrew ? 'Adaptive Off' : 'Adaptive On'}</span>
+                        </button>
+                      </li>
                       <li role='none'>
                         <button
                           role='menuitem'
@@ -379,6 +400,15 @@ function ProfileCard({
                   role='group'
                   aria-label={`Actions for ${data.label} profile`}
                 >
+                  <Tooltip content={data.adaptiveBrew ? 'Disable adaptive brew' : 'Enable adaptive brew'}>
+                    <button
+                      onClick={() => onToggleAdaptive(data.id, !data.adaptiveBrew)}
+                      className={`btn btn-sm ${data.adaptiveBrew ? 'btn-warning' : 'btn-outline'}`}
+                      aria-label={`${data.adaptiveBrew ? 'Disable' : 'Enable'} adaptive brew for ${data.label}`}
+                    >
+                      A
+                    </button>
+                  </Tooltip>
                   <Tooltip content={data.favorite ? 'Remove from favorites' : 'Add to favorites'}>
                     <button
                       onClick={onFavoriteToggle}
@@ -724,6 +754,24 @@ export function ProfileList() {
     [apiService, profiles, setLoading],
   );
 
+  const onToggleAdaptive = useCallback(
+    async (id, adaptiveBrew) => {
+      setLoading(true);
+      const profile = profiles.find(p => p.id === id);
+      if (profile) {
+        await apiService.request({
+          tp: 'req:profiles:save',
+          profile: {
+            ...profile,
+            adaptiveBrew,
+          },
+        });
+      }
+      await loadProfiles();
+    },
+    [apiService, profiles],
+  );
+
   const onExport = useCallback(() => {
     const exportedProfiles = profiles.map(p => {
       const ep = {
@@ -758,6 +806,7 @@ export function ProfileList() {
         }
       };
       reader.readAsText(file);
+      evt.target.value = '';
     }
   };
 
@@ -833,21 +882,19 @@ export function ProfileList() {
           </Tooltip>
           <Tooltip content='Import profiles'>
             <label
-              htmlFor='profileImport'
               className='btn btn-ghost btn-sm cursor-pointer'
-              aria-label='Import profiles'
+              aria-label='Import profiles from file'
             >
               <FontAwesomeIcon icon={faFileImport} />
+              <input
+                onChange={onUpload}
+                className='sr-only'
+                type='file'
+                accept='.json,application/json,.tcl'
+                aria-label='Select a JSON file containing profile data to import'
+              />
             </label>
           </Tooltip>
-          <input
-            onChange={onUpload}
-            className='hidden'
-            id='profileImport'
-            type='file'
-            accept='.json,application/json,.tcl'
-            aria-label='Select a JSON file containing profile data to import'
-          />
           <ConfirmButton
             onAction={onClear}
             icon={faTrashCan}
@@ -888,6 +935,7 @@ export function ProfileList() {
               data={data}
               onDelete={onDelete}
               onSelect={onSelect}
+              onToggleAdaptive={onToggleAdaptive}
               favoriteDisabled={favoriteDisabled}
               unfavoriteDisabled={unfavoriteDisabled}
               onUnfavorite={onUnfavorite}

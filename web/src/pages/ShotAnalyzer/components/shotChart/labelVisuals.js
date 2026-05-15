@@ -5,6 +5,7 @@ import { faFilter } from '@fortawesome/free-solid-svg-icons/faFilter';
 import { faGauge } from '@fortawesome/free-solid-svg-icons/faGauge';
 import { faScaleBalanced } from '@fortawesome/free-solid-svg-icons/faScaleBalanced';
 import { faTemperatureHalf } from '@fortawesome/free-solid-svg-icons/faTemperatureHalf';
+import { faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons/faWandMagicSparkles';
 import { WATER_DRAWN_PHASE_LABEL, WATER_DRAWN_TOTAL_LABEL } from './constants';
 
 const DISPLAY_LABEL_BY_LABEL = {
@@ -12,6 +13,7 @@ const DISPLAY_LABEL_BY_LABEL = {
   'Target P': 'Target Pressure',
   'Target F': 'Target Flow',
   'Target T': 'Target Temperature',
+  'Adaptive Correction': 'PI Correction',
 };
 
 const ICON_BY_LABEL = {
@@ -24,6 +26,7 @@ const ICON_BY_LABEL = {
   'Puck Flow': faFilter,
   Weight: faScaleBalanced,
   'Weight Flow': faScaleBalanced,
+  'Adaptive Correction': faWandMagicSparkles,
   [WATER_DRAWN_PHASE_LABEL]: faDroplet,
   [WATER_DRAWN_TOTAL_LABEL]: faDroplet,
 };

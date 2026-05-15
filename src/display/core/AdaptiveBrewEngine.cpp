@@ -64,6 +64,7 @@ AdaptiveDecision AdaptiveBrewEngine::decideNext(const AdaptiveInput &input) {
     const float rawPI = rampFactor * (KP * error + KI * integral_);
 
     // --- Channeling detection FSM -------------------------------------------
+    // Stronger flow/pressure divergence should accelerate both detection and correction.
     float channelExtraCorrection = 0.0F;
 
     if (history_.size() >= CHANNEL_MIN_HISTORY) {
@@ -77,14 +78,25 @@ AdaptiveDecision AdaptiveBrewEngine::decideNext(const AdaptiveInput &input) {
         }
         avgFlow /= static_cast<float>(window);
 
-        const bool flowSpike     = (input.actualFlowMLps - avgFlow) > CHANNEL_FLOW_EXCESS_MLPS;
-        const bool pressureDrop  = (input.targetPressureBar - input.actualPressureBar) > CHANNEL_PRESSURE_DROP_BAR;
+        const float flowExcess = input.actualFlowMLps - avgFlow;
+        const float pressureDeficit = input.targetPressureBar - input.actualPressureBar;
+        const bool flowSpike = flowExcess > CHANNEL_FLOW_EXCESS_MLPS;
+        const bool pressureDrop = pressureDeficit > CHANNEL_PRESSURE_DROP_BAR;
         const bool channelSignal = flowSpike && pressureDrop;
+        const bool strongSignal = channelSignal &&
+                                  ((flowExcess / CHANNEL_FLOW_EXCESS_MLPS) >= 1.5F ||
+                                   (pressureDeficit / CHANNEL_PRESSURE_DROP_BAR) >= 1.5F);
+        float channelSeverity = 1.0F;
+        if (channelSignal) {
+            const float flowSeverity = flowExcess / CHANNEL_FLOW_EXCESS_MLPS;
+            const float pressureSeverity = pressureDeficit / CHANNEL_PRESSURE_DROP_BAR;
+            channelSeverity = std::min(1.8F, 0.5F * flowSeverity + 0.5F * pressureSeverity);
+        }
 
         switch (channelState_) {
         case ChannelState::NORMAL:
             if (channelSignal) {
-                channelSuspectCount_++;
+                channelSuspectCount_ += strongSignal ? CHANNEL_CONFIRM_SAMPLES : 1;
                 channelState_ = (channelSuspectCount_ >= CHANNEL_CONFIRM_SAMPLES)
                                 ? ChannelState::CHANNELING
                                 : ChannelState::SUSPECT;
@@ -96,7 +108,7 @@ AdaptiveDecision AdaptiveBrewEngine::decideNext(const AdaptiveInput &input) {
 
         case ChannelState::SUSPECT:
             if (channelSignal) {
-                channelSuspectCount_++;
+                channelSuspectCount_ += strongSignal ? CHANNEL_CONFIRM_SAMPLES : 1;
                 if (channelSuspectCount_ >= CHANNEL_CONFIRM_SAMPLES) {
                     channelState_        = ChannelState::CHANNELING;
                     channelRecoverCount_ = 0;
@@ -116,7 +128,7 @@ AdaptiveDecision AdaptiveBrewEngine::decideNext(const AdaptiveInput &input) {
             } else {
                 channelRecoverCount_ = 0;
             }
-            channelExtraCorrection = CHANNEL_CORRECTION_BAR;
+            channelExtraCorrection = CHANNEL_CORRECTION_BAR * channelSeverity;
             break;
         }
     }

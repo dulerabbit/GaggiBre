@@ -55,11 +55,18 @@ class BrewProcess : public Process {
             return true;
         }
         double volume = currentVolume;
-        if (volume > 0.0) {
+        // For volumetric mode: use actual measured volume, not predicted overshoot
+        // This allows accurate stopping at the target weight when using Bluetooth scale
+        // Predictive overshoot was causing premature stops (e.g., stopping at 28g instead of 30g target)
+        // Only add minimal latency compensation (0.2g max) to account for pump stopping delay
+        if (volume > 0.0 && target != ProcessTarget::VOLUMETRIC) {
             double currentRate = volumetricRateCalculator.getRate();
             double predictedAddedVolume = currentRate * brewDelay;
             predictedAddedVolume = std::clamp(predictedAddedVolume, 0.0, 8.0);
             volume = currentVolume + predictedAddedVolume;
+        } else if (volume > 0.0 && target == ProcessTarget::VOLUMETRIC) {
+            // For volumetric: only add small safety margin (0.2g) for pump stopping latency
+            volume = currentVolume + 0.2;
         }
         float timeInPhase = static_cast<float>(millis() - currentPhaseStarted) / 1000.0f;
         return currentPhase.isFinished(target == ProcessTarget::VOLUMETRIC, volume, timeInPhase, currentFlow, currentPressure,

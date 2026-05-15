@@ -176,6 +176,7 @@ class Controller {
     bool processCompleted = false;
     bool steamReady = false;
     bool sdcard = false;
+    unsigned long lastWifiReconnectAttempt = 0;
     int error = 0;
 
     // Bluetooth scale connection monitoring
@@ -183,6 +184,7 @@ class Controller {
     unsigned long lastBluetoothMeasurement = 0;
     static const unsigned long BLUETOOTH_GRACE_PERIOD_MS = 1500; // 1.5 second grace period
     static const unsigned long CONTROLLER_WAITING_TIMEOUT_MS = 10000;
+    static const unsigned long WIFI_RECONNECT_MIN_INTERVAL_MS = 5000;
 
     xTaskHandle taskHandle;
 

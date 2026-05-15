@@ -30,6 +30,62 @@
 
 const String LOG_TAG = F("Controller");
 
+static bool ensureDirectoryExists(fs::FS &fs, const char *path) {
+    if (fs.exists(path)) {
+        return true;
+    }
+    return fs.mkdir(path);
+}
+
+static void seedProfilesToSDFromSPIFFS() {
+    if (!ensureDirectoryExists(SD_MMC, "/p")) {
+        ESP_LOGW(LOG_TAG, "Unable to create /p on SD");
+        return;
+    }
+
+    if (!SPIFFS.exists("/p")) {
+        return;
+    }
+
+    File srcRoot = SPIFFS.open("/p");
+    if (!srcRoot || !srcRoot.isDirectory()) {
+        return;
+    }
+
+    size_t copied = 0;
+    File src = srcRoot.openNextFile();
+    while (src) {
+        String srcName = src.name();
+        if (!src.isDirectory() && srcName.endsWith(".json")) {
+            int slash = srcName.lastIndexOf('/');
+            String fileName = slash >= 0 ? srcName.substring(slash + 1) : srcName;
+            String dstPath = String("/p/") + fileName;
+            if (!SD_MMC.exists(dstPath)) {
+                File dst = SD_MMC.open(dstPath, "w");
+                if (dst) {
+                    uint8_t buffer[512];
+                    while (true) {
+                        size_t n = src.read(buffer, sizeof(buffer));
+                        if (n == 0) {
+                            break;
+                        }
+                        dst.write(buffer, n);
+                    }
+                    dst.close();
+                    copied++;
+                }
+            }
+        }
+        src = srcRoot.openNextFile();
+    }
+
+    if (copied > 0) {
+        ESP_LOGI(LOG_TAG, "Seeded %u profile(s) to SD from SPIFFS", static_cast<unsigned>(copied));
+    } else {
+        ESP_LOGI(LOG_TAG, "SD profiles already contain all bundled defaults");
+    }
+}
+
 void Controller::setup() {
     mode = settings.getStartupMode();
 
@@ -48,6 +104,7 @@ void Controller::setup() {
         sdcard = true;
         ESP_LOGI(LOG_TAG, "SD Card detected and mounted");
         ESP_LOGI(LOG_TAG, "Used: %lluMB, Capacity: %lluMB", SD_MMC.usedBytes() / 1024 / 1024, SD_MMC.cardSize() / 1024 / 1024);
+        seedProfilesToSDFromSPIFFS();
     }
 #endif
     FS *fs = &SPIFFS;
@@ -56,10 +113,10 @@ void Controller::setup() {
     }
     profileManager = new ProfileManager(fs, "/p", settings, pluginManager);
     profileManager->setup();
+    // Keep mDNS available for web UI hostname resolution regardless of HomeKit usage.
+    pluginManager->registerPlugin(new mDNSPlugin());
     if (settings.isHomekit())
         pluginManager->registerPlugin(new HomekitPlugin(settings.getWifiSsid(), settings.getWifiPassword()));
-    else
-        pluginManager->registerPlugin(new mDNSPlugin());
     if (settings.isBoilerFillActive()) {
         pluginManager->registerPlugin(new BoilerFillPlugin());
     }
@@ -207,9 +264,54 @@ void Controller::setupInfos() {
 void Controller::setupWifi() {
     if (settings.getWifiSsid() != "" && settings.getWifiPassword() != "") {
         WiFi.setHostname(settings.getMdnsName().c_str());
-        WiFi.mode(WIFI_STA);
+        // Keep AP alive while STA connects so phones can always rejoin GaggiMate.
+        WiFi.mode(WIFI_AP_STA);
         WiFi.setAutoReconnect(true);
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
+        isApConnection = true;
+        WiFi.softAPConfig(WIFI_AP_IP, WIFI_AP_IP, WIFI_SUBNET_MASK);
+        WiFi.softAP(WIFI_AP_SSID);
+
+        // Register event handlers before begin() so they fire even if initial
+        // connect is slow or if the device reconnects after a transient drop.
+        // Guard with `initialized` so the got_ip event during the startup polling
+        // loop doesn't double-fire before setupWifi() issues its own trigger.
+        WiFi.onEvent(
+            [this](WiFiEvent_t, WiFiEventInfo_t) {
+                if (!initialized) return; // Startup path — setupWifi() handles initial trigger
+                // STA is healthy again; keep AP+STA mode but mark active connection as STA.
+                isApConnection = false;
+                ESP_LOGI(LOG_TAG, "WiFi connected, IP: %s", WiFi.localIP().toString().c_str());
+                pluginManager->trigger("controller:wifi:connect", "AP", 0);
+            },
+            WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+        WiFi.onEvent(
+            [this](WiFiEvent_t, WiFiEventInfo_t info) {
+                ESP_LOGI(LOG_TAG, "Lost WiFi connection. Reason: %s",
+                         WiFi.disconnectReasonName(static_cast<wifi_err_reason_t>(info.wifi_sta_disconnected.reason)));
+                pluginManager->trigger("controller:wifi:disconnect");
+
+                // Keep device reachable: immediately expose AP fallback while retrying STA.
+                isApConnection = true;
+                if (WiFi.getMode() != WIFI_AP_STA) {
+                    WiFi.mode(WIFI_AP_STA);
+                }
+                WiFi.softAPConfig(WIFI_AP_IP, WIFI_AP_IP, WIFI_SUBNET_MASK);
+                WiFi.softAP(WIFI_AP_SSID);
+                WiFi.setTxPower(WIFI_POWER_19_5dBm);
+                pluginManager->trigger("controller:wifi:connect", "AP", 1);
+
+                if (settings.getWifiSsid() != "" && settings.getWifiPassword() != "") {
+                    unsigned long now = millis();
+                    if (now - lastWifiReconnectAttempt >= WIFI_RECONNECT_MIN_INTERVAL_MS) {
+                        lastWifiReconnectAttempt = now;
+                        WiFi.disconnect(false, false);
+                        WiFi.begin(settings.getWifiSsid(), settings.getWifiPassword());
+                    }
+                }
+            },
+            WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+
         WiFi.begin(settings.getWifiSsid(), settings.getWifiPassword());
         WiFi.setTxPower(WIFI_POWER_19_5dBm);
         for (int attempts = 0; attempts < WIFI_CONNECT_ATTEMPTS; attempts++) {
@@ -221,17 +323,9 @@ void Controller::setupWifi() {
         }
         Serial.println("");
         if (WiFi.status() == WL_CONNECTED) {
+            isApConnection = false;
             ESP_LOGI(LOG_TAG, "Connected to %s with IP address %s", settings.getWifiSsid().c_str(),
                      WiFi.localIP().toString().c_str());
-            WiFi.onEvent([this](WiFiEvent_t, WiFiEventInfo_t) { pluginManager->trigger("controller:wifi:connect", "AP", 0); },
-                         WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
-            WiFi.onEvent(
-                [this](WiFiEvent_t, WiFiEventInfo_t info) {
-                    ESP_LOGI(LOG_TAG, "Lost WiFi connection. Reason: %s",
-                             WiFi.disconnectReasonName(static_cast<wifi_err_reason_t>(info.wifi_sta_disconnected.reason)));
-                    pluginManager->trigger("controller:wifi:disconnect");
-                },
-                WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
             configTzTime(resolve_timezone(settings.getTimezone()), NTP_SERVER);
             setenv("TZ", resolve_timezone(settings.getTimezone()), 1);
             tzset();
@@ -239,7 +333,7 @@ void Controller::setupWifi() {
             sntp_setservername(0, NTP_SERVER);
             sntp_init();
         } else {
-            WiFi.disconnect(true, true);
+            WiFi.disconnect(false, false);
             ESP_LOGI(LOG_TAG, "Timed out while connecting to WiFi");
             Serial.println("Timed out while connecting to WiFi");
         }
@@ -607,7 +701,7 @@ void Controller::updateControl() {
                                  brewProcess->getPumpPressure(), pressure,
                                  decision.correctionApplied,
                                  decision.confidence * 100.0F,
-                                 decision.channelingDetected ? "CHANNELING!" : "");
+                                 decision.channelingDetected ? "FLOW INSTABILITY!" : "");
                     }
 
                     // Fire channeling event on leading edge only.

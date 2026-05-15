@@ -100,6 +100,7 @@ function buildSeries(samples) {
     targetPressure: [],
     targetFlow: [],
     targetTemp: [],
+    adaptiveCorrection: [],
   };
 
   samples.forEach(sample => {
@@ -131,6 +132,9 @@ function buildSeries(samples) {
       series.targetFlow.push({ x: t, y: Math.min(targetFlow, TARGET_FLOW_MAX) });
     }
     if (targetTemp !== null) series.targetTemp.push({ x: t, y: targetTemp });
+
+    const adaptiveCorrection = toNumberOrNull(getSampleValue(sample, ['ac']));
+    if (adaptiveCorrection !== null) series.adaptiveCorrection.push({ x: t, y: adaptiveCorrection });
   });
 
   return series;
