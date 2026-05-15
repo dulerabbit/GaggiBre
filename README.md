@@ -17,10 +17,15 @@ GaggiBre is a feature branch, not a replacement. The hardware, PCB, and web flas
 | Feature | GaggiMate | GaggiBre |
 |---|---|---|
 | Pressure profiling | ✅ Manual profiles | ✅ Manual profiles |
+| **Manual Brew mode** | ❌ | ✅ Free-form live pressure & temp control |
 | Adaptive brew control | ❌ | ✅ Per-profile PI controller |
 | Flow-based channeling detection | ❌ | ✅ Live annotation in shot log |
 | Adaptive metadata in shot history | ❌ | ✅ Visible in Shot Analyzer |
 | Toggle adaptive on/off per profile | ❌ | ✅ Long-press or UI toggle |
+
+### Manual Brew Mode
+
+Manual Brew gives you full live control during a shot without committing to a preset profile. A dedicated screen lets you adjust target pressure and temperature in real time using swipe gestures while the shot is running. Live pressure, temperature, and flow are shown on a chart alongside elapsed time and weight. When the shot ends you can save it — it's automatically named and added to your shot history — or discard it. It's the same hardware doing far more.
 
 ### Adaptive PI Brew Controller
 
