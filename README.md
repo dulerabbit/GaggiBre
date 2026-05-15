@@ -1,7 +1,7 @@
 # GaggiBre
 
 <p align="center">
-<img src="docs/assets/logo.png" alt="Logo" width="250px" />
+<img src="docs/assets/gaggibre-logo.png" alt="GaggiBre Logo" width="250px" />
 <br />
 
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
