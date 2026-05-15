@@ -8,7 +8,9 @@
 
 </p>
 
-**GaggiBre** is an open-source smart firmware for Gaggia espresso machines. It gives you real-time control, intelligent brew automation, and a complete shot history — all running directly on affordable ESP32-S3 hardware with a touchscreen display.
+**GaggiBre** is an open-source smart firmware for Gaggia espresso machines.
+
+> **Why "Bre"?** *Bre* (pronounced "breh") is an ubiquitous, untranslatable Serbian interjection used as an intensifier — a "verbal exclamation mark" similar to informal English fillers like "come on," "bro," or "oh, brother." It adds emotional weight — urgency, camaraderie, or sheer enthusiasm — to whatever it follows. *GaggiBre* = your Gaggia, but louder. It gives you real-time control, intelligent brew automation, and a complete shot history — all running directly on affordable ESP32-S3 hardware with a touchscreen display.
 
 ## Flash it now
 
