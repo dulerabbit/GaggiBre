@@ -38,7 +38,7 @@ jobs:
           git tag -d nightly || true
           git describe --tags --dirty > out/version.txt
       - name: Build Web
-        run: ./scripts/build_spiffs.sh
+        run: bash ./scripts/build_spiffs.sh
       - name: Build controller
         run: |
           pio run -e controller
