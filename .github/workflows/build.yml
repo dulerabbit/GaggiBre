@@ -81,6 +81,7 @@ jobs:
           cp out/display-headless-partitions.bin upload/headless/partitions.bin
           cp out/display-headless-bootloader.bin upload/headless/bootloader.bin
       - uses: ./.github/actions/upload-firmware
+        continue-on-error: true
         env:
           UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
           UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
@@ -89,6 +90,7 @@ jobs:
           target: 'controller'
           firmware_dir: 'upload/controller'
       - uses: ./.github/actions/upload-firmware
+        continue-on-error: true
         env:
           UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
           UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
@@ -98,6 +100,7 @@ jobs:
           firmware_dir: 'upload/display'
           firmware_files: 'bootloader.bin,partitions.bin,firmware.bin,filesystem.bin'
       - uses: ./.github/actions/upload-firmware
+        continue-on-error: true
         env:
           UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
           UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
