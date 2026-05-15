@@ -8,7 +8,7 @@
         { "path": "display-headless-bootloader.bin", "offset": 0 },
         { "path": "display-headless-partitions.bin", "offset": 32768 },
         { "path": "display-headless-firmware.bin",   "offset": 65536 },
-        { "path": "display-headless-filesystem.bin", "offset": 15794176 }
+        { "path": "display-headless-filesystem.bin", "offset": 13172736 }
       ]
     }
   ]
