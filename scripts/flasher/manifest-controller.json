@@ -1,0 +1,14 @@
+{
+  "name": "GaggiBre (Controller Board)",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "board-bootloader.bin", "offset": 0 },
+        { "path": "board-partitions.bin", "offset": 32768 },
+        { "path": "board-firmware.bin",   "offset": 65536 }
+      ]
+    }
+  ]
+}

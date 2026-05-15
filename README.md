@@ -8,76 +8,76 @@
 
 </p>
 
-**GaggiBre** is a community fork of [GaggiMate](https://github.com/jniebuhr/gaggimate) — the open-source smart controller for Gaggia espresso machines. It builds on everything GaggiMate provides and adds an **adaptive PI brew controller** that automatically adjusts pump pressure in real time based on live flow data, so you get a more consistent shot without manually tweaking profiles.
+**GaggiBre** is an open-source smart firmware for Gaggia espresso machines. It gives you real-time control, intelligent brew automation, and a complete shot history — all running directly on affordable ESP32-S3 hardware with a touchscreen display.
 
-## What's Different from GaggiMate
+## Flash it now
 
-GaggiBre is a feature branch, not a replacement. The hardware, PCB, and web flasher are identical. The differences are purely in firmware behaviour:
-
-| Feature | GaggiMate | GaggiBre |
-|---|---|---|
-| Pressure profiling | ✅ Manual profiles | ✅ Manual profiles |
-| **Manual Brew mode** | ❌ | ✅ Free-form live pressure & temp control |
-| Adaptive brew control | ❌ | ✅ Per-profile PI controller |
-| Flow-based channeling detection | ❌ | ✅ Live annotation in shot log |
-| Adaptive metadata in shot history | ❌ | ✅ Visible in Shot Analyzer |
-| Toggle adaptive on/off per profile | ❌ | ✅ Long-press or UI toggle |
-
-### Manual Brew Mode
-
-Manual Brew gives you full live control during a shot without committing to a preset profile. A dedicated screen lets you adjust target pressure and temperature in real time using swipe gestures while the shot is running. Live pressure, temperature, and flow are shown on a chart alongside elapsed time and weight. When the shot ends you can save it — it's automatically named and added to your shot history — or discard it. It's the same hardware doing far more.
-
-### Adaptive PI Brew Controller
-
-When adaptive mode is enabled on a profile, the firmware runs a closed-loop PI controller that watches actual flow rate against the target and trims the pump output to compensate. If channeling is detected (a sudden flow spike mid-shot) it logs the event and annotates the shot chart so you can see exactly when it happened.
-
-Adaptive mode is **per-profile** and **opt-in** — all existing profiles behave exactly as they do in stock GaggiMate unless you enable it.
-
-## Hardware
-
-GaggiBre runs on the same hardware as GaggiMate. You can buy a kit or build your own:
-
-- **Kit**: [shop.gaggimate.eu](https://shop.gaggimate.eu/)
-- **Docs & assembly**: [gaggimate.eu](https://gaggimate.eu/)
-- **PCB files**: see the `pcb/` directory
-
-## Flashing
-
-### Web Flasher (easiest)
-
-The latest stable release is available via the GitHub Pages web flasher — no tools required, just a USB cable and Chrome/Edge:
+The easiest way to get started — no tools, no terminal, just Chrome or Edge and a USB cable:
 
 ➡️ **[https://dulerabbit.github.io/GaggiBre/stable/](https://dulerabbit.github.io/GaggiBre/stable/)**
 
-### Manual / PlatformIO
+## Features
+
+### Manual Brew Mode
+
+Take full control of your shot in real time. A dedicated brew screen lets you swipe to adjust target pressure and boiler temperature on the fly while the shot is pulling. A live chart shows pressure, temperature, and flow together so you can see exactly what the machine is doing. Elapsed time and weight are always visible. When you're done, save the shot with one tap — it's automatically named and stored — or discard it. No preset required, just you and the machine.
+
+### Adaptive Brew Controller
+
+Enable adaptive mode on any profile and GaggiBre takes over the pump automatically. A closed-loop PI controller watches actual flow rate and trims pump output continuously so your pressure curve stays on track even when the puck resistance changes. The result is a more repeatable shot without manual adjustments between pulls. Adaptive mode is per-profile and fully opt-in — profiles without it run exactly as programmed.
+
+### Channeling Detection
+
+GaggiBre watches for sudden flow spikes mid-shot that indicate channeling and logs them as named events in the shot record. Every channeling incident is annotated directly on the shot chart in the analyzer so you can see when it happened, how bad it was, and whether your technique or distribution is improving across shots.
+
+### Pressure Profiling
+
+Build multi-phase pressure profiles with ramp, hold, and flow-control segments. Profiles are stored on the SD card and editable from the web UI. Pre-loaded defaults cover common espresso styles — 9-bar, lever, LM lever, adaptive, flush, and descale — and you can import or export your own.
+
+### Shot History & Analyzer
+
+Every shot is automatically logged with full pressure, temperature, flow, and weight data. The Shot Analyzer lets you overlay multiple shots, zoom into any segment, and compare pulls over time. Adaptive brew metadata and channeling events are part of the record.
+
+### Web UI
+
+A mobile-friendly interface is served directly from the device — open `http://gaggimate.local` or the device IP in any browser on your network. Manage profiles, browse shot history, configure Wi-Fi, and trigger OTA firmware updates without touching a computer.
+
+### OTA Updates
+
+Update firmware over Wi-Fi from the web UI. Stable releases and nightly builds are available from the device's update screen — no USB required after the initial flash.
+
+### Temperature Control
+
+A boiler PID keeps temperature stable at your target. Separate targets for brew and steam modes. The standby screen shows live temperature at a glance.
+
+### Safety
+
+Automatic shutoff on overtemperature or watchdog timeout. The machine will always stop safely if something goes wrong.
+
+## Hardware
+
+GaggiBre runs on the same kit hardware supported by the upstream project:
+
+- **Buy a kit**: [shop.gaggimate.eu](https://shop.gaggimate.eu/)
+- **Full assembly docs**: [gaggimate.eu](https://gaggimate.eu/)
+- **PCB design files**: see the `pcb/` directory in this repo
+
+## Build from source
 
 ```bash
-# Clone including submodules
 git clone --recursive https://github.com/dulerabbit/GaggiBre.git
 cd GaggiBre
 
-# Build and flash (display variant)
+# Build and flash firmware (display variant)
 pio run -e display -t upload --upload-port <PORT>
 
 # Build and flash filesystem
 pio run -e display -t uploadfs --upload-port <PORT>
 ```
 
-## Features (inherited from GaggiMate)
-
-- **Temperature Control** — boiler PID with configurable targets
-- **Pressure Profiling** — multi-phase profiles with ramp, hold, and flow control
-- **Brew Timer** — target duration with automatic stop
-- **Steam & Hot Water** — dedicated modes for non-espresso tasks
-- **Shot History** — full shot log with pressure, temperature, and flow charts
-- **OTA Updates** — over-the-air firmware updates from the web UI
-- **Web UI** — mobile-friendly interface served from the device itself
-- **mDNS** — reach the device at `http://gaggimate.local` on your local network
-- **Safety** — automatic shutoff on overtemp or watchdog timeout
-
 ## License
 
-This work is licensed under [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). It is a derivative of [GaggiMate](https://github.com/jniebuhr/gaggimate) by Jan Niebuhr, used under the same license.
+Licensed under [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 [cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
 [cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
