@@ -62,6 +62,46 @@ jobs:
           pio run -t buildfs -e display
           cp .pio/build/display/spiffs.bin out/display-filesystem.bin
           cp .pio/build/display/spiffs.bin out/display-headless-filesystem.bin
+          mkdir -p upload/controller upload/display upload/headless
+          cp .pio/build/display/spiffs.bin upload/display/filesystem.bin
+          cp .pio/build/display/spiffs.bin upload/headless/filesystem.bin
+      - name: Stage upload dirs
+        run: |
+          cp out/board-firmware.bin upload/controller/firmware.bin
+          cp out/board-partitions.bin upload/controller/partitions.bin
+          cp out/board-bootloader.bin upload/controller/bootloader.bin
+          cp out/display-firmware.bin upload/display/firmware.bin
+          cp out/display-partitions.bin upload/display/partitions.bin
+          cp out/display-bootloader.bin upload/display/bootloader.bin
+          cp out/display-headless-firmware.bin upload/headless/firmware.bin
+          cp out/display-headless-partitions.bin upload/headless/partitions.bin
+          cp out/display-headless-bootloader.bin upload/headless/bootloader.bin
+      - uses: ./.github/actions/upload-firmware
+        env:
+          UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
+          UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
+        with:
+          channel: 'stable'
+          target: 'controller'
+          firmware_dir: 'upload/controller'
+      - uses: ./.github/actions/upload-firmware
+        env:
+          UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
+          UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
+        with:
+          channel: 'stable'
+          target: 'display'
+          firmware_dir: 'upload/display'
+          firmware_files: 'bootloader.bin,partitions.bin,firmware.bin,filesystem.bin'
+      - uses: ./.github/actions/upload-firmware
+        env:
+          UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
+          UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
+        with:
+          channel: 'stable'
+          target: 'headless'
+          firmware_dir: 'upload/headless'
+          firmware_files: 'bootloader.bin,partitions.bin,firmware.bin,filesystem.bin'
       - name: Archive Firmware Files
         uses: actions/upload-artifact@v4
         with:
@@ -70,6 +110,10 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      pull-requests: write
     steps:
       - name: Download Firmware Files
         uses: actions/download-artifact@v4
@@ -84,3 +128,10 @@ jobs:
           generateReleaseNotes: true
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Deploy to GitHub Pages (stable)
+        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./release
+          destination_dir: stable
+          publish_branch: gh-pages
