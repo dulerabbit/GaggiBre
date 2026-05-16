@@ -41,11 +41,8 @@ void ui_StandbyScreen_screen_init(void) {
     lv_obj_set_align(ui_StandbyScreen_logo, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_StandbyScreen_logo, LV_OBJ_FLAG_ADV_HITTEST);  /// Flags
     lv_obj_clear_flag(ui_StandbyScreen_logo, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_img_set_zoom(ui_StandbyScreen_logo, 210);
-    ui_object_set_themeable_style_property(ui_StandbyScreen_logo, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_IMG_RECOLOR,
-                                           _ui_theme_color_NiceWhite);
-    ui_object_set_themeable_style_property(ui_StandbyScreen_logo, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_IMG_RECOLOR_OPA,
-                                           _ui_theme_alpha_NiceWhite);
+    lv_img_set_zoom(ui_StandbyScreen_logo, 256);
+    lv_obj_set_style_img_recolor_opa(ui_StandbyScreen_logo, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_StandbyScreen_time = lv_label_create(ui_StandbyScreen);
     lv_obj_set_width(ui_StandbyScreen_time, LV_SIZE_CONTENT);  /// 1
@@ -152,7 +149,7 @@ void ui_StandbyScreen_screen_init(void) {
     lv_obj_set_x(ui_StandbyScreen_mainLabel, 0);
     lv_obj_set_y(ui_StandbyScreen_mainLabel, 150);
     lv_obj_set_align(ui_StandbyScreen_mainLabel, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_StandbyScreen_mainLabel, "Starting...");
+    lv_label_set_text(ui_StandbyScreen_mainLabel, "GaggiBre");
     ui_object_set_themeable_style_property(ui_StandbyScreen_mainLabel, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR,
                                            _ui_theme_color_NiceWhite);
     ui_object_set_themeable_style_property(ui_StandbyScreen_mainLabel, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
