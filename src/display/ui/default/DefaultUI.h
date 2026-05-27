@@ -119,6 +119,7 @@ class DefaultUI {
 
     bool rerender = false;
     unsigned long lastRender = 0;
+    bool wideDisplay = false;   // true when horizontal resolution > 481 (e.g. Waveshare 4.3C)
 
     int mode = MODE_STANDBY;
     int currentTemp = 0;

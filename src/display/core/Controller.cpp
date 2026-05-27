@@ -22,10 +22,12 @@
 #include <display/plugins/SmartGrindPlugin.h>
 #include <display/plugins/WebUIPlugin.h>
 #include <display/plugins/mDNSPlugin.h>
+#include <display/plugins/VoicePlugin.h>
 #ifndef GAGGIMATE_HEADLESS
 #include <display/drivers/AmoledDisplayDriver.h>
 #include <display/drivers/LilyGoDriver.h>
 #include <display/drivers/WaveshareDriver.h>
+#include <display/drivers/Waveshare43Driver.h>
 #endif
 
 const String LOG_TAG = F("Controller");
@@ -131,6 +133,9 @@ void Controller::setup() {
     pluginManager->registerPlugin(&BLEScales);
     pluginManager->registerPlugin(new LedControlPlugin());
     pluginManager->registerPlugin(new AutoWakeupPlugin());
+#ifdef GAGGIMATE_VOICE_ENABLED
+    pluginManager->registerPlugin(new VoicePlugin());
+#endif
     pluginManager->setup(this);
 
     pluginManager->on("profiles:profile:save", [this](Event const &event) {
@@ -179,6 +184,8 @@ void Controller::setupPanel() {
         driver = LilyGoDriver::getInstance();
     } else if (AmoledDisplayDriver::getInstance()->isCompatible()) {
         driver = AmoledDisplayDriver::getInstance();
+    } else if (Waveshare43Driver::getInstance()->isCompatible()) {
+        driver = Waveshare43Driver::getInstance();
     } else if (WaveshareDriver::getInstance()->isCompatible()) {
         driver = WaveshareDriver::getInstance();
     } else {

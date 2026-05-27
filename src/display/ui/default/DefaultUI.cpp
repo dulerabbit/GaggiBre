@@ -391,6 +391,17 @@ void DefaultUI::loopProfiles() {
 }
 
 void DefaultUI::changeScreen(lv_obj_t **screen, void (*target_init)()) {
+    // For the wide (4.3") display remap round-display init functions to their _43 equivalents
+    if (wideDisplay) {
+        if      (target_init == &ui_StandbyScreen_screen_init)      target_init = &ui_StandbyScreen_screen_init_43;
+        else if (target_init == &ui_MenuScreen_screen_init)          target_init = &ui_MenuScreen_screen_init_43;
+        else if (target_init == &ui_BrewScreen_screen_init)          target_init = &ui_BrewScreen_screen_init_43;
+        else if (target_init == &ui_StatusScreen_screen_init)        target_init = &ui_StatusScreen_screen_init_43;
+        else if (target_init == &ui_ManualBrewScreen_screen_init)    target_init = &ui_ManualBrewScreen_screen_init_43;
+        else if (target_init == &ui_SimpleProcessScreen_screen_init) target_init = &ui_SimpleProcessScreen_screen_init_43;
+        else if (target_init == &ui_ProfileScreen_screen_init)       target_init = &ui_ProfileScreen_screen_init_43;
+        else if (target_init == &ui_GrindScreen_screen_init)         target_init = &ui_GrindScreen_screen_init_43;
+    }
     targetScreen = screen;
     targetScreenInit = target_init;
     rerender = true;
@@ -499,6 +510,7 @@ void DefaultUI::onVolumetricDelete() {
 
 void DefaultUI::setupPanel() {
     ui_init();
+    wideDisplay = lv_disp_get_hor_res(lv_disp_get_default()) > 481;
     lv_task_handler();
 
     delay(100);

@@ -38,6 +38,7 @@ extern "C" {
 #include "screens/ui_SimpleProcessScreen.h"
 #include "screens/ui_StandbyScreen.h"
 #include "screens/ui_StatusScreen.h"
+#include "screens43/ui_screens43.h"
 
 ///////////////////// VARIABLES ////////////////////
 
