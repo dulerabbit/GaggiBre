@@ -43,6 +43,7 @@
 // robust in a noisy kitchen environment.
 static const sr_cmd_t kSrCommands[] = {
     { VoicePlugin::CMD_BREW_COFFEE, "brew coffee"  },
+    { VoicePlugin::CMD_BREW_COFFEE, "make coffee"  },
     { VoicePlugin::CMD_BREW_COFFEE, "start brewing"},
     { VoicePlugin::CMD_STOP,        "stop"         },
     { VoicePlugin::CMD_STOP,        "cancel"       },

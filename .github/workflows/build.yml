@@ -47,10 +47,10 @@ jobs:
           mv .pio/build/controller/bootloader.bin out/board-bootloader.bin
       - name: Build display
         run: |
-          pio run -e display
-          mv .pio/build/display/firmware.bin out/display-firmware.bin
-          mv .pio/build/display/partitions.bin out/display-partitions.bin
-          mv .pio/build/display/bootloader.bin out/display-bootloader.bin
+          pio run -e display-ws43
+          mv .pio/build/display-ws43/firmware.bin out/display-firmware.bin
+          mv .pio/build/display-ws43/partitions.bin out/display-partitions.bin
+          mv .pio/build/display-ws43/bootloader.bin out/display-bootloader.bin
       - name: Build headless
         run: |
           pio run -e display-headless
@@ -59,16 +59,16 @@ jobs:
           mv .pio/build/display-headless/bootloader.bin out/display-headless-bootloader.bin
       - name: Build display FS
         run: |
-          pio run -t buildfs -e display
-          cp .pio/build/display/spiffs.bin out/display-filesystem.bin
-          cp .pio/build/display/spiffs.bin out/display-headless-filesystem.bin
+          pio run -t buildfs -e display-ws43
+          cp .pio/build/display-ws43/spiffs.bin out/display-filesystem.bin
+          cp .pio/build/display-ws43/spiffs.bin out/display-headless-filesystem.bin
           cp scripts/flasher/index.html out/index.html
           cp scripts/flasher/manifest-display.json out/manifest-display.json
           cp scripts/flasher/manifest-headless.json out/manifest-headless.json
           cp scripts/flasher/manifest-controller.json out/manifest-controller.json
           mkdir -p upload/controller upload/display upload/headless
-          cp .pio/build/display/spiffs.bin upload/display/filesystem.bin
-          cp .pio/build/display/spiffs.bin upload/headless/filesystem.bin
+          cp .pio/build/display-ws43/spiffs.bin upload/display/filesystem.bin
+          cp .pio/build/display-ws43/spiffs.bin upload/headless/filesystem.bin
       - name: Stage upload dirs
         run: |
           cp out/board-firmware.bin upload/controller/firmware.bin

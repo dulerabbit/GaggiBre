@@ -1,5 +1,5 @@
 {
-  "name": "GaggiBre (Display)",
+  "name": "GaggiBre (Display - Waveshare 4.3C)",
   "new_install_prompt_erase": true,
   "builds": [
     {
@@ -8,7 +8,7 @@
         { "path": "display-bootloader.bin", "offset": 0 },
         { "path": "display-partitions.bin", "offset": 32768 },
         { "path": "display-firmware.bin",   "offset": 65536 },
-        { "path": "display-filesystem.bin", "offset": 13172736 }
+        { "path": "display-filesystem.bin", "offset": 14680064 }
       ]
     }
   ]
