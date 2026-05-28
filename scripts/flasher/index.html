@@ -49,14 +49,14 @@
     }
     .note a { color: #aaa; }
     .targets {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: center;
-      margin-bottom: 2rem;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.6rem;
+      margin-bottom: 1rem;
     }
     .targets button {
       padding: 0.4rem 1rem;
-      border-radius: 20px;
+      border-radius: 10px;
       border: 2px solid var(--muted);
       background: transparent;
       color: var(--text);
@@ -69,6 +69,37 @@
       background: var(--brand);
       color: #fff;
     }
+    .target-meta {
+      margin-bottom: 1rem;
+      color: #c9c9c9;
+      text-align: left;
+      font-size: 0.86rem;
+      line-height: 1.45;
+      min-height: 4.5rem;
+    }
+    .guard {
+      margin-bottom: 1rem;
+      text-align: left;
+      font-size: 0.82rem;
+      color: #d8d8d8;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .install-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .install-wrap.locked {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+    .lock-note {
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+      color: #a8a8a8;
+      min-height: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -77,20 +108,26 @@
     <div class="version" id="version-label">Loading version…</div>
     <p class="description">
       Flash GaggiBre firmware to your Gaggia espresso machine controller directly from your browser.
-      Connect via USB, select the right variant below, then click Install.
+      Connect via USB, pick your exact hardware target, confirm, then click Install.
     </p>
 
-    <div class="targets">
-      <button class="active" onclick="setTarget('display', this)">Display (WS43)</button>
-      <button onclick="setTarget('headless', this)">Headless</button>
-      <button onclick="setTarget('controller', this)">Controller board</button>
-    </div>
+    <div class="targets" id="targets"></div>
 
-    <esp-web-install-button id="install-btn" manifest="manifest-display.json">
-      <span slot="unsupported">
-        Use Chrome or Edge on desktop to flash firmware.
-      </span>
-    </esp-web-install-button>
+    <div class="target-meta" id="target-meta"></div>
+
+    <label class="guard">
+      <input id="confirm-target" type="checkbox" />
+      <span>I confirmed the selected target matches the connected hardware.</span>
+    </label>
+
+    <div class="install-wrap locked" id="install-wrap">
+      <esp-web-install-button id="install-btn" manifest="manifest-display.json">
+        <span slot="unsupported">
+          Use Chrome or Edge on desktop to flash firmware.
+        </span>
+      </esp-web-install-button>
+    </div>
+    <div class="lock-note" id="lock-note">Check the confirmation box to enable flashing.</div>
 
     <p class="note">
       Requires Chrome or Edge on a desktop/laptop.<br />
@@ -99,11 +136,106 @@
   </div>
 
   <script>
-    function setTarget(target, btn) {
-      document.querySelectorAll('.targets button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('install-btn').setAttribute('manifest', 'manifest-' + target + '.json');
+    const fallbackCatalog = {
+      targets: [
+        {
+          id: 'display-lilygo',
+          label: 'Display (LilyGo T-RGB)',
+          manifest: 'manifest-display.json',
+          note: 'Use for LilyGo T-RGB boards.'
+        },
+        {
+          id: 'display-ws43',
+          label: 'Display (Waveshare 4.3C)',
+          manifest: 'manifest-display-ws43.json',
+          note: 'Use for Waveshare ESP32-S3-Touch-LCD-4.3C.'
+        },
+        {
+          id: 'headless',
+          label: 'Headless',
+          manifest: 'manifest-headless.json',
+          note: 'No screen driver/UI; backend services only.'
+        },
+        {
+          id: 'controller',
+          label: 'Controller Board',
+          manifest: 'manifest-controller.json',
+          note: 'Use for the separate GaggiBre controller board.'
+        }
+      ]
+    };
+
+    const state = {
+      catalog: fallbackCatalog,
+      selected: null
+    };
+
+    function renderTargets() {
+      const root = document.getElementById('targets');
+      root.innerHTML = '';
+      state.catalog.targets.forEach((target, index) => {
+        const btn = document.createElement('button');
+        btn.textContent = target.label;
+        btn.dataset.targetId = target.id;
+        btn.onclick = () => selectTarget(target.id);
+        if (index === 0) {
+          btn.classList.add('active');
+          state.selected = target.id;
+        }
+        root.appendChild(btn);
+      });
+      updateSelectedUI();
     }
+
+    function selectTarget(targetId) {
+      state.selected = targetId;
+      updateSelectedUI();
+      document.querySelectorAll('.targets button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.targetId === targetId);
+      });
+      const confirm = document.getElementById('confirm-target');
+      confirm.checked = false;
+      syncLock();
+    }
+
+    function updateSelectedUI() {
+      const target = state.catalog.targets.find((x) => x.id === state.selected) || state.catalog.targets[0];
+      document.getElementById('install-btn').setAttribute('manifest', target.manifest);
+      document.getElementById('target-meta').textContent = target.note || '';
+      const lockNote = document.getElementById('lock-note');
+      lockNote.textContent = 'Selected: ' + target.label + '. Check the confirmation box to enable flashing.';
+    }
+
+    function syncLock() {
+      const checked = document.getElementById('confirm-target').checked;
+      const wrap = document.getElementById('install-wrap');
+      wrap.classList.toggle('locked', !checked);
+    }
+
+    document.getElementById('confirm-target').addEventListener('change', syncLock);
+
+    function loadCatalog() {
+      fetch('manifest-catalog.json')
+        .then((r) => {
+          if (!r.ok) {
+            throw new Error('No manifest catalog');
+          }
+          return r.json();
+        })
+        .then((catalog) => {
+          if (!catalog || !Array.isArray(catalog.targets) || catalog.targets.length === 0) {
+            throw new Error('Invalid catalog');
+          }
+          state.catalog = catalog;
+          renderTargets();
+        })
+        .catch(() => {
+          state.catalog = fallbackCatalog;
+          renderTargets();
+        });
+    }
+
+    loadCatalog();
 
     fetch('version.txt').then(r => r.text()).then(v => {
       document.getElementById('version-label').textContent = 'Version: ' + v.trim();

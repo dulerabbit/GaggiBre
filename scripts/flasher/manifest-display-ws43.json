@@ -1,0 +1,15 @@
+{
+  "name": "GaggiBre (Display - Waveshare 4.3C)",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "display-ws43-bootloader.bin", "offset": 0 },
+        { "path": "display-ws43-partitions.bin", "offset": 32768 },
+        { "path": "display-ws43-firmware.bin",   "offset": 65536 },
+        { "path": "display-ws43-filesystem.bin", "offset": 14680064 }
+      ]
+    }
+  ]
+}

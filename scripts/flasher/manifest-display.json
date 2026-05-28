@@ -1,14 +1,14 @@
 {
-  "name": "GaggiBre (Display - Waveshare 4.3C)",
+  "name": "GaggiBre (Display - LilyGo T-RGB)",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "display-bootloader.bin", "offset": 0 },
-        { "path": "display-partitions.bin", "offset": 32768 },
-        { "path": "display-firmware.bin",   "offset": 65536 },
-        { "path": "display-filesystem.bin", "offset": 14680064 }
+        { "path": "display-lilygo-bootloader.bin", "offset": 0 },
+        { "path": "display-lilygo-partitions.bin", "offset": 32768 },
+        { "path": "display-lilygo-firmware.bin",   "offset": 65536 },
+        { "path": "display-lilygo-filesystem.bin", "offset": 15794176 }
       ]
     }
   ]
