@@ -52,7 +52,7 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.6rem;
-      margin-bottom: 1rem;
+      margin: 0.75rem 0 1rem;
     }
     .targets button {
       padding: 0.4rem 1rem;
@@ -70,35 +70,50 @@
       color: #fff;
     }
     .target-meta {
-      margin-bottom: 1rem;
+      margin: 0.75rem 0 1rem;
       color: #c9c9c9;
       text-align: left;
       font-size: 0.86rem;
       line-height: 1.45;
-      min-height: 4.5rem;
+      min-height: 3.25rem;
     }
-    .guard {
-      margin-bottom: 1rem;
-      text-align: left;
-      font-size: 0.82rem;
-      color: #d8d8d8;
+    .mode-row {
       display: flex;
-      align-items: flex-start;
-      gap: 0.5rem;
+      gap: 0.6rem;
+      margin-bottom: 0.8rem;
+      justify-content: center;
+    }
+    .mode-row button {
+      padding: 0.45rem 0.9rem;
+      border-radius: 10px;
+      border: 2px solid var(--muted);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.83rem;
+      transition: all 0.15s;
+    }
+    .mode-row button.active {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
     }
     .install-wrap {
-      position: relative;
-      display: inline-block;
+      margin-bottom: 0.5rem;
     }
-    .install-wrap.locked {
-      opacity: 0.65;
-      pointer-events: none;
-    }
-    .lock-note {
-      margin-top: 0.5rem;
+    .status-note {
       font-size: 0.78rem;
       color: #a8a8a8;
-      min-height: 1rem;
+      min-height: 1.2rem;
+      line-height: 1.4;
+    }
+    .manual-panel {
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid #3a3a3a;
+    }
+    .hidden {
+      display: none;
     }
   </style>
 </head>
@@ -108,26 +123,33 @@
     <div class="version" id="version-label">Loading version…</div>
     <p class="description">
       Flash GaggiBre firmware to your Gaggia espresso machine controller directly from your browser.
-      Connect via USB, pick your exact hardware target, confirm, then click Install.
+      Connect via USB and click Install. Auto mode uses your last known hardware target.
     </p>
 
-    <div class="targets" id="targets"></div>
+    <div class="mode-row">
+      <button id="mode-auto" class="active" onclick="setMode('auto')">Auto (One Button)</button>
+      <button id="mode-manual" onclick="setMode('manual')">Manual Target</button>
+    </div>
 
-    <div class="target-meta" id="target-meta"></div>
-
-    <label class="guard">
-      <input id="confirm-target" type="checkbox" />
-      <span>I confirmed the selected target matches the connected hardware.</span>
-    </label>
-
-    <div class="install-wrap locked" id="install-wrap">
+    <div class="install-wrap">
       <esp-web-install-button id="install-btn" manifest="manifest-display.json">
         <span slot="unsupported">
           Use Chrome or Edge on desktop to flash firmware.
         </span>
       </esp-web-install-button>
     </div>
-    <div class="lock-note" id="lock-note">Check the confirmation box to enable flashing.</div>
+    <div class="status-note" id="status-note">Loading target catalog…</div>
+
+    <div class="manual-panel hidden" id="manual-panel">
+      <div class="targets" id="targets"></div>
+      <div class="target-meta" id="target-meta"></div>
+      <div class="status-note">Manual selection is saved as your preferred Auto target.</div>
+    </div>
+
+    <label class="guard hidden" id="legacy-guard" aria-hidden="true">
+      <input type="checkbox" />
+      <span>Legacy guard</span>
+    </label>
 
     <p class="note">
       Requires Chrome or Edge on a desktop/laptop.<br />
@@ -167,8 +189,11 @@
 
     const state = {
       catalog: fallbackCatalog,
-      selected: null
+      selected: null,
+      mode: 'auto'
     };
+
+    const PREFERRED_TARGET_KEY = 'gaggibrePreferredTarget';
 
     function renderTargets() {
       const root = document.getElementById('targets');
@@ -178,13 +203,18 @@
         btn.textContent = target.label;
         btn.dataset.targetId = target.id;
         btn.onclick = () => selectTarget(target.id);
-        if (index === 0) {
+        if (index === 0 && !state.selected) {
           btn.classList.add('active');
           state.selected = target.id;
         }
         root.appendChild(btn);
       });
+      const preferred = localStorage.getItem(PREFERRED_TARGET_KEY);
+      if (preferred && state.catalog.targets.some((x) => x.id === preferred)) {
+        state.selected = preferred;
+      }
       updateSelectedUI();
+      updateAutoTarget();
     }
 
     function selectTarget(targetId) {
@@ -193,26 +223,51 @@
       document.querySelectorAll('.targets button').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.targetId === targetId);
       });
-      const confirm = document.getElementById('confirm-target');
-      confirm.checked = false;
-      syncLock();
+      localStorage.setItem(PREFERRED_TARGET_KEY, targetId);
+      updateAutoTarget();
     }
 
     function updateSelectedUI() {
       const target = state.catalog.targets.find((x) => x.id === state.selected) || state.catalog.targets[0];
-      document.getElementById('install-btn').setAttribute('manifest', target.manifest);
       document.getElementById('target-meta').textContent = target.note || '';
-      const lockNote = document.getElementById('lock-note');
-      lockNote.textContent = 'Selected: ' + target.label + '. Check the confirmation box to enable flashing.';
+      document.querySelectorAll('.targets button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.targetId === target.id);
+      });
     }
 
-    function syncLock() {
-      const checked = document.getElementById('confirm-target').checked;
-      const wrap = document.getElementById('install-wrap');
-      wrap.classList.toggle('locked', !checked);
+    function setInstallManifest(manifestName) {
+      document.getElementById('install-btn').setAttribute('manifest', manifestName);
     }
 
-    document.getElementById('confirm-target').addEventListener('change', syncLock);
+    function updateAutoTarget() {
+      const preferred = localStorage.getItem(PREFERRED_TARGET_KEY);
+      const fallback = state.catalog.targets[0];
+      const selected = state.catalog.targets.find((x) => x.id === preferred) || state.catalog.targets.find((x) => x.id === state.selected) || fallback;
+
+      if (state.mode === 'auto') {
+        setInstallManifest(selected.manifest);
+      }
+
+      const status = document.getElementById('status-note');
+      status.textContent = 'Auto target: ' + selected.label + '. Switch to Manual to change it.';
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      const autoBtn = document.getElementById('mode-auto');
+      const manualBtn = document.getElementById('mode-manual');
+      autoBtn.classList.toggle('active', mode === 'auto');
+      manualBtn.classList.toggle('active', mode === 'manual');
+      document.getElementById('manual-panel').classList.toggle('hidden', mode !== 'manual');
+
+      if (mode === 'manual') {
+        const target = state.catalog.targets.find((x) => x.id === state.selected) || state.catalog.targets[0];
+        setInstallManifest(target.manifest);
+        document.getElementById('status-note').textContent = 'Manual target: ' + target.label + '.';
+      } else {
+        updateAutoTarget();
+      }
+    }
 
     function loadCatalog() {
       fetch('manifest-catalog.json')
@@ -228,10 +283,12 @@
           }
           state.catalog = catalog;
           renderTargets();
+          setMode(state.mode);
         })
         .catch(() => {
           state.catalog = fallbackCatalog;
           renderTargets();
+          setMode(state.mode);
         });
     }
 
