@@ -42,6 +42,45 @@ extern "C" {
 
 ///////////////////// VARIABLES ////////////////////
 
+// BrewScreen43 specific objects
+extern lv_obj_t *ui_BrewScreen_tempGaugeCircle;
+extern lv_obj_t *ui_BrewScreen_tempValueLabel;
+extern lv_obj_t *ui_BrewScreen_tempLabel;
+extern lv_obj_t *ui_BrewScreen_pressureGaugeCircle;
+extern lv_obj_t *ui_BrewScreen_pressureValueLabel;
+extern lv_obj_t *ui_BrewScreen_pressureLabel;
+extern lv_obj_t *ui_BrewScreen_adaptiveContainer;
+extern lv_obj_t *ui_BrewScreen_adaptiveLabel;
+extern lv_obj_t *ui_BrewScreen_profileRow;
+extern lv_obj_t *ui_BrewScreen_profileButton;
+extern lv_obj_t *ui_BrewScreen_profileNameLabel;
+extern lv_obj_t *ui_BrewScreen_settingsButton;
+extern lv_obj_t *ui_BrewScreen_metricsRow;
+extern lv_obj_t *ui_BrewScreen_flowContainer;
+extern lv_obj_t *ui_BrewScreen_flowLabel;
+extern lv_obj_t *ui_BrewScreen_weightContainer;
+extern lv_obj_t *ui_BrewScreen_timeContainer;
+extern lv_obj_t *ui_BrewScreen_timeLabel;
+
+// Add missing declarations for ui_BrewScreen elements
+extern lv_obj_t *ui_BrewScreen_profileInfo;
+extern lv_obj_t *ui_BrewScreen_profileLabel;
+extern lv_obj_t *ui_BrewScreen_controlContainer;
+extern lv_obj_t *ui_BrewScreen_modeSwitch;
+extern lv_obj_t *ui_BrewScreen_volumetricButton;
+extern lv_obj_t *ui_BrewScreen_targetLabel;
+extern lv_obj_t *ui_BrewScreen_byWeightButton;
+extern lv_obj_t *ui_BrewScreen_mainLabel3;
+extern lv_obj_t *ui_BrewScreen_byTimeButton;
+extern lv_obj_t *ui_BrewScreen_saveButton;
+extern lv_obj_t *ui_BrewScreen_targetContainer;
+
+// Brew screen standalone circle value labels (direct children of ui_BrewScreen,
+// NOT inside the dials component — so they are never clipped by the sidebar).
+// DefaultUI.cpp updates these alongside the sidebar dials text labels.
+extern lv_obj_t *ui_BrewScreen_circleTempLabel;
+extern lv_obj_t *ui_BrewScreen_circlePressureLabel;
+
 // EVENTS
 extern lv_obj_t *ui____initial_actions0;
 
@@ -58,14 +97,6 @@ LV_IMG_DECLARE(ui_img_1455708189);    // assets/pressure-filled.png
 LV_IMG_DECLARE(ui_img_1951499226);    // assets/thermometer-half-40x40.png
 LV_IMG_DECLARE(ui_img_1220767159);    // assets/tachometer-fast-40x40.png
 LV_IMG_DECLARE(ui_img_manual_pressure_80x80); // assets/manual-pressure-80x80.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_489054950);     // assets/gauge-fill.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_1455708189);    // assets/pressure-filled.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_1951499226);    // assets/thermometer-half-40x40.png
-LV_IMG_DECLARE(ui_img_1220767159);    // assets/tachometer-fast-40x40.png
 LV_IMG_DECLARE(ui_img_295763949);     // assets/angle-up-40x40.png
 LV_IMG_DECLARE(ui_img_98036921);      // assets/angle-left-40x40.png
 LV_IMG_DECLARE(ui_img_944513416);     // assets/angle-right-40x40.png
@@ -76,14 +107,6 @@ LV_IMG_DECLARE(ui_img_979979123);     // assets/mug-hot-alt-80x80.png
 LV_IMG_DECLARE(ui_img_783005998);     // assets/wind-80x80.png
 LV_IMG_DECLARE(ui_img_545340440);     // assets/raindrops-80x80.png
 LV_IMG_DECLARE(ui_img_363557387);     // assets/coffee-bean-80x80.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_489054950);     // assets/gauge-fill.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_1455708189);    // assets/pressure-filled.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_1951499226);    // assets/thermometer-half-40x40.png
-LV_IMG_DECLARE(ui_img_1220767159);    // assets/tachometer-fast-40x40.png
 LV_IMG_DECLARE(ui_img_445946954);     // assets/play-40x40.png
 LV_IMG_DECLARE(ui_img_1424216268);    // assets/equality-40x40.png
 LV_IMG_DECLARE(ui_img_332059803);     // assets/dropdown-bar-40x40.png
@@ -93,31 +116,7 @@ LV_IMG_DECLARE(ui_img_390988422);     // assets/plus-small-40x40.png
 LV_IMG_DECLARE(ui_img_2074354459);    // assets/clock-future-past-40x40.png
 LV_IMG_DECLARE(ui_img_1594943393);    // assets/disk-30x30.png
 LV_IMG_DECLARE(ui_img_1464184441);    // assets/floppy-disks-30x30.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_489054950);     // assets/gauge-fill.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_1455708189);    // assets/pressure-filled.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_1951499226);    // assets/thermometer-half-40x40.png
-LV_IMG_DECLARE(ui_img_1220767159);    // assets/tachometer-fast-40x40.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_489054950);     // assets/gauge-fill.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_1455708189);    // assets/pressure-filled.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_1951499226);    // assets/thermometer-half-40x40.png
-LV_IMG_DECLARE(ui_img_1220767159);    // assets/tachometer-fast-40x40.png
 LV_IMG_DECLARE(ui_img_1456692430);    // assets/pause-40x40.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_489054950);     // assets/gauge-fill.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_untitled_png);  // assets/Untitled.png
-LV_IMG_DECLARE(ui_img_1455708189);    // assets/pressure-filled.png
-LV_IMG_DECLARE(ui_img_340686386);     // assets/indicator-small.png
-LV_IMG_DECLARE(ui_img_1951499226);    // assets/thermometer-half-40x40.png
-LV_IMG_DECLARE(ui_img_1220767159);    // assets/tachometer-fast-40x40.png
 LV_IMG_DECLARE(ui_img_1829139226);    // assets/angle-down-40x40.png
 LV_IMG_DECLARE(ui_img_flowmeter_png); // assets/flowmeter.png
 LV_IMG_DECLARE(ui_img_691326438);     // assets/wind-40x40.png

@@ -33,6 +33,7 @@ extern lv_obj_t *ui_StatusScreen_brewBar;
 extern lv_obj_t *ui_StatusScreen_labelContainer;
 extern lv_obj_t *ui_StatusScreen_brewLabel;
 extern lv_obj_t *ui_StatusScreen_brewVolume;
+extern lv_obj_t *ui_StatusScreen_adaptiveLabel;
 // CUSTOM VARIABLES
 extern lv_obj_t *uic_StatusScreen_dials_tempGauge;
 extern lv_obj_t *uic_StatusScreen_dials_tempTarget;

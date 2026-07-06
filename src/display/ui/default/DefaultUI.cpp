@@ -229,7 +229,9 @@ void DefaultUI::init() {
     });
     pluginManager->on("controller:brew:start", [this](Event const &event) {
         if (mode == MODE_MANUAL) {
-            changeScreen(&ui_ManualBrewScreen, &ui_ManualBrewScreen_screen_init);
+            if (lv_scr_act() != ui_ManualBrewScreen) {
+                changeScreen(&ui_ManualBrewScreen, &ui_ManualBrewScreen_screen_init);
+            }
         } else {
             changeScreen(&ui_StatusScreen, &ui_StatusScreen_screen_init);
         }
@@ -460,6 +462,7 @@ void DefaultUI::onProfileAdaptiveToggle() {
     if (profileId == selectedProfileId) {
         selectedProfile = profile;
     }
+    profileLoaded = 1;
     adaptiveStateVersion++;
     profileDirty = true;
     rerender = true;
@@ -476,7 +479,6 @@ void DefaultUI::onSelectedProfileAdaptiveToggle() {
         return;
     }
 
-    profileManager->selectProfile(profile.id);
     selectedProfile = profile;
     selectedProfileId = profile.id;
 
@@ -487,6 +489,7 @@ void DefaultUI::onSelectedProfileAdaptiveToggle() {
         }
     }
 
+    profileLoaded = 1;
     adaptiveStateVersion++;
     profileDirty = true;
     rerender = true;
@@ -546,6 +549,17 @@ void DefaultUI::setupState() {
                                                : getManualProfilePressureTarget(selectedProfile, settings.getPressureScaling());
 }
 
+static void setGaugeValue(lv_obj_t *g, int32_t v, bool wide) {
+    if (wide) {
+        lv_bar_set_value(g, v, LV_ANIM_OFF);
+        // lv_bar_set_value does not emit LV_EVENT_VALUE_CHANGED — fire it manually
+        // so the block-segment recolor callback in ui_comp_dials43.c runs.
+        lv_event_send(g, LV_EVENT_VALUE_CHANGED, NULL);
+    } else {
+        lv_arc_set_value(g, (int16_t)v);
+    }
+}
+
 void DefaultUI::setupReactive() {
     effect_mgr.use_effect([=] { return currentScreen == ui_MenuScreen; }, [=]() { adjustDials(ui_MenuScreen_dials); },
                           &pressureAvailable);
@@ -581,43 +595,46 @@ void DefaultUI::setupReactive() {
                           &mode);
     effect_mgr.use_effect([=] { return currentScreen == ui_MenuScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_MenuScreen_dials_tempGauge, currentTemp);
+                               setGaugeValue(uic_MenuScreen_dials_tempGauge, currentTemp, wideDisplay);
                               lv_label_set_text_fmt(uic_MenuScreen_dials_tempText, kTempLabelFormat, currentTemp);
                           },
                           &currentTemp);
     effect_mgr.use_effect([=] { return currentScreen == ui_StatusScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_StatusScreen_dials_tempGauge, currentTemp);
+                               setGaugeValue(uic_StatusScreen_dials_tempGauge, currentTemp, wideDisplay);
                               lv_label_set_text_fmt(uic_StatusScreen_dials_tempText, kTempLabelFormat, currentTemp);
                           },
                           &currentTemp);
     effect_mgr.use_effect([=] { return currentScreen == ui_BrewScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_BrewScreen_dials_tempGauge, currentTemp);
+                               setGaugeValue(uic_BrewScreen_dials_tempGauge, currentTemp, wideDisplay);
                               lv_label_set_text_fmt(uic_BrewScreen_dials_tempText, kTempLabelFormat, currentTemp);
+                              if (ui_BrewScreen_circleTempLabel) {
+                                  lv_label_set_text_fmt(ui_BrewScreen_circleTempLabel, kTempLabelFormat, currentTemp);
+                              }
                           },
                           &currentTemp);
     effect_mgr.use_effect([=] { return currentScreen == ui_ManualBrewScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_ManualBrewScreen_dials_tempGauge, currentTemp);
+                               setGaugeValue(uic_ManualBrewScreen_dials_tempGauge, currentTemp, wideDisplay);
                               lv_label_set_text_fmt(uic_ManualBrewScreen_dials_tempText, kTempLabelFormat, currentTemp);
                           },
                           &currentTemp);
     effect_mgr.use_effect([=] { return currentScreen == ui_GrindScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_GrindScreen_dials_tempGauge, currentTemp);
+                               setGaugeValue(uic_GrindScreen_dials_tempGauge, currentTemp, wideDisplay);
                               lv_label_set_text_fmt(uic_GrindScreen_dials_tempText, kTempLabelFormat, currentTemp);
                           },
                           &currentTemp);
     effect_mgr.use_effect([=] { return currentScreen == ui_SimpleProcessScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_SimpleProcessScreen_dials_tempGauge, currentTemp);
+                               setGaugeValue(uic_SimpleProcessScreen_dials_tempGauge, currentTemp, wideDisplay);
                               lv_label_set_text_fmt(uic_SimpleProcessScreen_dials_tempText, kTempLabelFormat, currentTemp);
                           },
                           &currentTemp);
     effect_mgr.use_effect([=] { return currentScreen == ui_ProfileScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_ProfileScreen_dials_tempGauge, currentTemp);
+                               setGaugeValue(uic_ProfileScreen_dials_tempGauge, currentTemp, wideDisplay);
                               lv_label_set_text_fmt(uic_ProfileScreen_dials_tempText, kTempLabelFormat, currentTemp);
                           },
                           &currentTemp);
@@ -653,26 +670,29 @@ void DefaultUI::setupReactive() {
                           &targetTemp);
     effect_mgr.use_effect([=] { return currentScreen == ui_MenuScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_MenuScreen_dials_pressureGauge, pressure * 10.0f);
-                              lv_label_set_text_fmt(uic_MenuScreen_dials_pressureText, "%.1f bar", pressure);
+                               setGaugeValue(uic_MenuScreen_dials_pressureGauge, pressure * 10.0f, wideDisplay);
+                               lv_label_set_text_fmt(uic_MenuScreen_dials_pressureText, "%.1f\nbar", pressure);
                           },
                           &pressure);
     effect_mgr.use_effect([=] { return currentScreen == ui_StatusScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_StatusScreen_dials_pressureGauge, pressure * 10.0f);
-                              lv_label_set_text_fmt(uic_StatusScreen_dials_pressureText, "%.1f bar", pressure);
+                               setGaugeValue(uic_StatusScreen_dials_pressureGauge, pressure * 10.0f, wideDisplay);
+                               lv_label_set_text_fmt(uic_StatusScreen_dials_pressureText, "%.1f\nbar", pressure);
                           },
                           &pressure);
     effect_mgr.use_effect([=] { return currentScreen == ui_BrewScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_BrewScreen_dials_pressureGauge, pressure * 10.0f);
-                              lv_label_set_text_fmt(uic_BrewScreen_dials_pressureText, "%.1f bar", pressure);
+                               setGaugeValue(uic_BrewScreen_dials_pressureGauge, pressure * 10.0f, wideDisplay);
+                               lv_label_set_text_fmt(uic_BrewScreen_dials_pressureText, "%.1f\nbar", pressure);
+                               if (ui_BrewScreen_circlePressureLabel) {
+                                   lv_label_set_text_fmt(ui_BrewScreen_circlePressureLabel, "%.1f\nbar", pressure);
+                               }
                           },
                           &pressure);
     effect_mgr.use_effect([=] { return currentScreen == ui_ManualBrewScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_ManualBrewScreen_dials_pressureGauge, pressure * 10.0f);
-                              lv_label_set_text_fmt(uic_ManualBrewScreen_dials_pressureText, "%.1f bar", pressure);
+                               setGaugeValue(uic_ManualBrewScreen_dials_pressureGauge, pressure * 10.0f, wideDisplay);
+                               lv_label_set_text_fmt(uic_ManualBrewScreen_dials_pressureText, "%.1f\nbar", pressure);
                           },
                           &pressure);
     effect_mgr.use_effect([=] { return currentScreen == ui_ManualBrewScreen; },
@@ -688,20 +708,20 @@ void DefaultUI::setupReactive() {
                           &manualPressureTarget, &pressureScaling);
     effect_mgr.use_effect([=] { return currentScreen == ui_GrindScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_GrindScreen_dials_pressureGauge, pressure * 10.0f);
-                              lv_label_set_text_fmt(uic_GrindScreen_dials_pressureText, "%.1f bar", pressure);
+                               setGaugeValue(uic_GrindScreen_dials_pressureGauge, pressure * 10.0f, wideDisplay);
+                               lv_label_set_text_fmt(uic_GrindScreen_dials_pressureText, "%.1f\nbar", pressure);
                           },
                           &pressure);
     effect_mgr.use_effect([=] { return currentScreen == ui_SimpleProcessScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_SimpleProcessScreen_dials_pressureGauge, pressure * 10.0f);
-                              lv_label_set_text_fmt(uic_SimpleProcessScreen_dials_pressureText, "%.1f bar", pressure);
+                               setGaugeValue(uic_SimpleProcessScreen_dials_pressureGauge, pressure * 10.0f, wideDisplay);
+                               lv_label_set_text_fmt(uic_SimpleProcessScreen_dials_pressureText, "%.1f\nbar", pressure);
                           },
                           &pressure);
     effect_mgr.use_effect([=] { return currentScreen == ui_ProfileScreen; },
                           [=]() {
-                              lv_arc_set_value(uic_ProfileScreen_dials_pressureGauge, pressure * 10.0f);
-                              lv_label_set_text_fmt(uic_ProfileScreen_dials_pressureText, "%.1f bar", pressure);
+                               setGaugeValue(uic_ProfileScreen_dials_pressureGauge, pressure * 10.0f, wideDisplay);
+                               lv_label_set_text_fmt(uic_ProfileScreen_dials_pressureText, "%.1f\nbar", pressure);
                           },
                           &pressure);
     effect_mgr.use_effect([=] { return currentScreen == ui_StandbyScreen; },
@@ -888,12 +908,25 @@ void DefaultUI::setupReactive() {
     effect_mgr.use_effect(
         [=] { return currentScreen == ui_BrewScreen; },
         [=]() {
-            _ui_flag_modify(ui_BrewScreen_adjustments, LV_OBJ_FLAG_HIDDEN, brewScreenState == BrewScreenState::Settings);
+            _ui_flag_modify(ui_BrewScreen_startButton, LV_OBJ_FLAG_HIDDEN,
+                            wideDisplay ? (brewScreenState == BrewScreenState::Brew)
+                                        : (brewScreenState == BrewScreenState::Settings));
+            // On the wide 43" display the ±temp/duration adjustments panel is hidden in Brew mode
+            // (the mockup shows only the profile row + adaptive pill between the rings).
+            // On the round display it behaves as before (hidden only in Settings mode).
+            // NOTE: _ui_flag_modify(obj, HIDDEN, value): value=true(1) → SHOWS, value=false(0) → HIDES
+            // Wide display: hide adjustments in Brew mode, show in Settings mode.
+            // Round display: show adjustments in Brew mode, hide in Settings mode (original).
+            _ui_flag_modify(ui_BrewScreen_adjustments, LV_OBJ_FLAG_HIDDEN,
+                            wideDisplay ? (brewScreenState == BrewScreenState::Settings)
+                                        : (brewScreenState == BrewScreenState::Brew));
             _ui_flag_modify(ui_BrewScreen_acceptButton, LV_OBJ_FLAG_HIDDEN, brewScreenState == BrewScreenState::Settings);
             _ui_flag_modify(ui_BrewScreen_saveButton, LV_OBJ_FLAG_HIDDEN, brewScreenState == BrewScreenState::Settings);
             _ui_flag_modify(ui_BrewScreen_saveAsNewButton, LV_OBJ_FLAG_HIDDEN, brewScreenState == BrewScreenState::Settings);
-            _ui_flag_modify(ui_BrewScreen_startButton, LV_OBJ_FLAG_HIDDEN, brewScreenState == BrewScreenState::Brew);
-            _ui_flag_modify(ui_BrewScreen_profileInfo, LV_OBJ_FLAG_HIDDEN, brewScreenState == BrewScreenState::Brew);
+            // Wide display: profileInfo always visible (true = SHOW).
+            // Round display: show in Settings mode only.
+            _ui_flag_modify(ui_BrewScreen_profileInfo, LV_OBJ_FLAG_HIDDEN,
+                            wideDisplay ? true : (brewScreenState == BrewScreenState::Settings));
             _ui_flag_modify(ui_BrewScreen_modeSwitch, LV_OBJ_FLAG_HIDDEN,
                             brewScreenState == BrewScreenState::Brew && volumetricAvailable);
             if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
@@ -1063,19 +1096,48 @@ void DefaultUI::updateStatusScreen() const {
     } else if (controller->getSettings().isDelayAdjust() && !process->isComplete()) {
         phaseText = "Calibrating...";
     }
-    // Live adaptive annotation: append engine status to phase label during active shot.
-    if (brewProcess->profile.adaptiveBrew &&
-        adaptive::AdaptiveBrewEngine::isFeatureEnabled() &&
-        process->isActive()) {
-        const auto decision = controller->getLastAdaptiveDecision();
-        if (decision.channelingDetected) {
-            phaseText += " CH!";
-        } else if (fabsf(decision.correctionApplied) >= 0.1F) {
-            char buf[12];
-            snprintf(buf, sizeof(buf), " A%+.1f", decision.correctionApplied);
-            phaseText += buf;
+    // Live adaptive annotation.
+    // On the 4.3" screen (adaptiveLabel non-NULL) use the dedicated centre label with colour.
+    // On the round LilyGo screen (adaptiveLabel NULL) fall back to appending a suffix to phaseText.
+    if (ui_StatusScreen_adaptiveLabel != nullptr) {
+        // 4.3" dedicated adaptive label
+        if (brewProcess->profile.adaptiveBrew &&
+            adaptive::AdaptiveBrewEngine::isFeatureEnabled() &&
+            process->isActive()) {
+            const auto decision = controller->getLastAdaptiveDecision();
+            if (decision.channelingDetected) {
+                lv_label_set_text(ui_StatusScreen_adaptiveLabel, "\xE2\x9A\xA0 CHANNELING DETECTED");
+                lv_obj_set_style_text_color(ui_StatusScreen_adaptiveLabel, lv_color_hex(0xFF4444), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_text_opa(ui_StatusScreen_adaptiveLabel, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            } else if (fabsf(decision.correctionApplied) >= 0.1F) {
+                char buf[32];
+                snprintf(buf, sizeof(buf), "Adaptive %+.1f bar", decision.correctionApplied);
+                lv_label_set_text(ui_StatusScreen_adaptiveLabel, buf);
+                lv_obj_set_style_text_color(ui_StatusScreen_adaptiveLabel, lv_color_hex(0xFFAA33), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_text_opa(ui_StatusScreen_adaptiveLabel, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            } else {
+                lv_label_set_text(ui_StatusScreen_adaptiveLabel, "Adaptive Active");
+                lv_obj_set_style_text_color(ui_StatusScreen_adaptiveLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_text_opa(ui_StatusScreen_adaptiveLabel, LV_OPA_50, LV_PART_MAIN | LV_STATE_DEFAULT);
+            }
         } else {
-            phaseText += " [A]";
+            lv_label_set_text(ui_StatusScreen_adaptiveLabel, "");
+        }
+    } else {
+        // LilyGo round screen: append suffix to phase label as before
+        if (brewProcess->profile.adaptiveBrew &&
+            adaptive::AdaptiveBrewEngine::isFeatureEnabled() &&
+            process->isActive()) {
+            const auto decision = controller->getLastAdaptiveDecision();
+            if (decision.channelingDetected) {
+                phaseText += " CH!";
+            } else if (fabsf(decision.correctionApplied) >= 0.1F) {
+                char buf[12];
+                snprintf(buf, sizeof(buf), " A%+.1f", decision.correctionApplied);
+                phaseText += buf;
+            } else {
+                phaseText += " [A]";
+            }
         }
     }
     lv_label_set_text(ui_StatusScreen_phaseLabel, phaseText.c_str());
@@ -1167,10 +1229,14 @@ void DefaultUI::adjustDials(lv_obj_t *dials) {
     _ui_flag_modify(pressureGauge, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_REMOVE);
     _ui_flag_modify(pressureText, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_REMOVE);
     _ui_flag_modify(pressureSymbol, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_REMOVE);
-    lv_obj_set_x(tempText, -50);
-    lv_obj_set_y(tempText, -205);
-    lv_arc_set_bg_angles(tempGauge, 118, 242);
-    lv_arc_set_range(pressureGauge, 0, pressureScaling * 10);
+    if (!wideDisplay) {
+        lv_obj_set_x(tempText, -50);
+        lv_obj_set_y(tempText, -205);
+        lv_arc_set_bg_angles(tempGauge, 118, 242);
+        lv_arc_set_range(pressureGauge, 0, pressureScaling * 10);
+    } else {
+        lv_bar_set_range(pressureGauge, 0, pressureScaling * 10);
+    }
 }
 
 inline void DefaultUI::adjustTempTarget(lv_obj_t *dials) {

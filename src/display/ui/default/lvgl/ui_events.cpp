@@ -6,13 +6,14 @@
 #include "../../../main.h"
 #include "../../../plugins/BLEScalePlugin.h"
 #include "ui.h"
+#include "ui_overhaul43.h"
 #include <Arduino.h>
 
 // Flag to track if volumetric hold was triggered
 static bool volumetricHoldTriggered = false;
 static int manualTempPixels = 0;
 static int manualPressurePixels = 0;
-static constexpr int MANUAL_TEMP_PIXELS_PER_STEP = 18;
+static constexpr int MANUAL_TEMP_PIXELS_PER_STEP = 50;
 static constexpr int MANUAL_PRESSURE_PIXELS_PER_STEP = 8;
 static constexpr float MANUAL_PRESSURE_STEP = 0.2f;
 static Profile manualProfileBackup{};
@@ -367,11 +368,9 @@ void onMenuClick(lv_event_t *e) {
 void onManualBrewScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_ManualBrewScreen_startButton, 25);
     lv_obj_set_ext_click_area(ui_ManualBrewScreen_backButton, 70);
+    // tempText is now a visible red readout label — keep its background transparent.
     if (uic_ManualBrewScreen_dials_tempText) {
-        // Remove visible tile contrast around temp text on the true-black manual screen.
-        lv_obj_set_style_bg_color(uic_ManualBrewScreen_dials_tempText, lv_color_hex(0x000000),
-                                  LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_opa(uic_ManualBrewScreen_dials_tempText, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(uic_ManualBrewScreen_dials_tempText, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
     }
     if (uic_ManualBrewScreen_dials_tempGauge) {
         lv_obj_set_ext_click_area(uic_ManualBrewScreen_dials_tempGauge, 45);
@@ -379,6 +378,7 @@ void onManualBrewScreenLoad(lv_event_t *e) {
     if (uic_ManualBrewScreen_dials_pressureGauge) {
         lv_obj_set_ext_click_area(uic_ManualBrewScreen_dials_pressureGauge, 45);
     }
+    ui_overhaul43_apply_manual();
 }
 
 void onManualBrewAdjust(lv_event_t *e) {
@@ -393,12 +393,8 @@ void onManualBrewAdjust(lv_event_t *e) {
 void onManualBrewAdjustTemp(lv_event_t *e) {
     lv_event_code_t event_code = lv_event_get_code(e);
 
-    if (event_code == LV_EVENT_RELEASED || event_code == LV_EVENT_PRESS_LOST) {
-        manualTempPixels = 0;
-        return;
-    }
-
-    if (event_code == LV_EVENT_PRESSED) {
+    if (event_code == LV_EVENT_RELEASED || event_code == LV_EVENT_PRESS_LOST ||
+        event_code == LV_EVENT_PRESSED) {
         manualTempPixels = 0;
         return;
     }
@@ -412,16 +408,20 @@ void onManualBrewAdjustTemp(lv_event_t *e) {
         return;
     }
 
-    lv_point_t vector;
-    lv_indev_get_vect(indev, &vector);
-    manualTempPixels += -vector.y;
-
-    while (abs(manualTempPixels) >= MANUAL_TEMP_PIXELS_PER_STEP) {
-        const float step = manualTempPixels > 0 ? 1.0f : -1.0f;
-        const float target =
-            constrain(controller.getTargetTemp() + step, static_cast<float>(MIN_TEMP), static_cast<float>(MAX_TEMP));
-        applyManualTempTarget(target);
-        manualTempPixels += manualTempPixels > 0 ? -MANUAL_TEMP_PIXELS_PER_STEP : MANUAL_TEMP_PIXELS_PER_STEP;
+    // Delta/relative mapping: swipe up → warmer, swipe down → cooler.
+    // MANUAL_TEMP_PIXELS_PER_STEP pixels of swipe = 1°C change.
+    // This gives fine-grained control and avoids the jarring jump of absolute mapping.
+    lv_point_t vect;
+    lv_indev_get_vect(indev, &vect);
+    manualTempPixels += -vect.y;   // up = negative y = positive delta
+    const int steps = manualTempPixels / MANUAL_TEMP_PIXELS_PER_STEP;
+    if (steps != 0) {
+        manualTempPixels -= steps * MANUAL_TEMP_PIXELS_PER_STEP;
+        const float cur = static_cast<float>(controller.getTargetTemp());
+        const float newTemp = constrain(cur + static_cast<float>(steps),
+                                        static_cast<float>(MIN_TEMP),
+                                        static_cast<float>(MAX_TEMP));
+        applyManualTempTarget(newTemp);
     }
 
     controller.getUI()->markDirty();
@@ -430,12 +430,8 @@ void onManualBrewAdjustTemp(lv_event_t *e) {
 void onManualBrewAdjustPressure(lv_event_t *e) {
     lv_event_code_t event_code = lv_event_get_code(e);
 
-    if (event_code == LV_EVENT_RELEASED || event_code == LV_EVENT_PRESS_LOST) {
-        manualPressurePixels = 0;
-        return;
-    }
-
-    if (event_code == LV_EVENT_PRESSED) {
+    if (event_code == LV_EVENT_RELEASED || event_code == LV_EVENT_PRESS_LOST ||
+        event_code == LV_EVENT_PRESSED) {
         manualPressurePixels = 0;
         return;
     }
@@ -449,41 +445,14 @@ void onManualBrewAdjustPressure(lv_event_t *e) {
         return;
     }
 
-    lv_point_t vector;
-    lv_indev_get_vect(indev, &vector);
-    manualPressurePixels += -vector.y;
-
-    // Calculate predicted pressure based on current accumulated pixels (immediate visual feedback)
-    const float scaling = controller.getSettings().getPressureScaling();
-    const float currentPressure = getManualPressureTarget();
-    const int predictedSteps = manualPressurePixels / MANUAL_PRESSURE_PIXELS_PER_STEP;
-    const float predictedPressure = constrain(currentPressure + (predictedSteps * MANUAL_PRESSURE_STEP), 0.0f, scaling);
-
-    // Show predicted pressure immediately on display while swiping
-    if (ui_ManualBrewScreen_pressureTarget) {
-        const float displayPressure = std::round(predictedPressure * 10.0f) / 10.0f;
-        char pressureTargetText[8];
-        std::snprintf(pressureTargetText, sizeof(pressureTargetText), "%.1f", displayPressure);
-        lv_label_set_text(ui_ManualBrewScreen_pressureTarget, pressureTargetText);
-    }
-
-    if (uic_ManualBrewScreen_dials_pressureTarget) {
-        const double pct = 1.0 - static_cast<double>(predictedPressure) / static_cast<double>(std::max(1, static_cast<int>(scaling)));
-        const double start = -62.0;
-        const double range = 124.0;
-        double angle = start + range - range * pct;
-        lv_img_set_angle(uic_ManualBrewScreen_dials_pressureTarget, angle * -10);
-        int x = static_cast<int>(std::cos(angle * M_PI / 180.0f) * 235.0);
-        int y = static_cast<int>(std::sin(angle * M_PI / 180.0f) * -235.0);
-        lv_obj_set_pos(uic_ManualBrewScreen_dials_pressureTarget, x, y);
-    }
-
-    while (abs(manualPressurePixels) >= MANUAL_PRESSURE_PIXELS_PER_STEP) {
-        const float step = manualPressurePixels > 0 ? MANUAL_PRESSURE_STEP : -MANUAL_PRESSURE_STEP;
-        setManualPressureTarget(getManualPressureTarget() + step);
-        manualPressurePixels +=
-            manualPressurePixels > 0 ? -MANUAL_PRESSURE_PIXELS_PER_STEP : MANUAL_PRESSURE_PIXELS_PER_STEP;
-    }
+    // Absolute mapping: top of zone (y=0) → max pressure, bottom (y=480) → 0 bar
+    // Touch anywhere on the pressure strip and the target jumps to that position instantly.
+    lv_point_t point;
+    lv_indev_get_point(indev, &point);
+    const float scaling = std::min(controller.getSettings().getPressureScaling(), 12.0f);
+    const float t = constrain(static_cast<float>(point.y) / 400.0f, 0.0f, 1.0f);
+    const float newPressure = constrain(scaling * (1.0f - t), 0.0f, scaling);
+    setManualPressureTarget(newPressure);
 
     controller.getUI()->markDirty();
 }
@@ -561,6 +530,7 @@ void onProfileScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_ProfileScreen_nextProfileBtn, 30);
     lv_obj_set_ext_click_area(ui_ProfileScreen_chooseButton, 30);
     lv_obj_set_ext_click_area(ui_ProfileScreen_ImgButton1, 20);
+    ui_overhaul43_apply_profile();
 }
 
 void onMenuScreenLoad(lv_event_t *e) {
@@ -587,18 +557,20 @@ void onMenuScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_MenuScreen_waterBtn, 15);
     lv_obj_set_ext_click_area(ui_MenuScreen_grindBtn, 15);
     lv_obj_set_ext_click_area(ui_MenuScreen_standbyButton, 20);
+    ui_overhaul43_apply_menu();
 }
 
 void onBrewScreenLoad(lv_event_t *e) {
-    lv_obj_set_ext_click_area(ui_BrewScreen_startButton, 25);
-    lv_obj_set_ext_click_area(ui_BrewScreen_profileSelectBtn, 25);
-    lv_obj_set_ext_click_area(ui_BrewScreen_ImgButton5, 20);
-    lv_obj_set_ext_click_area(ui_BrewScreen_upDurationButton, 15);
-    lv_obj_set_ext_click_area(ui_BrewScreen_downDurationButton, 15);
-    lv_obj_set_ext_click_area(ui_BrewScreen_upTempButton, 15);
-    lv_obj_set_ext_click_area(ui_BrewScreen_downTempButton, 15);
-        lv_obj_set_ext_click_area(ui_BrewScreen_tempContainer, 20);
-        lv_obj_set_ext_click_area(ui_BrewScreen_Label1, 20);
+    if (ui_BrewScreen_startButton)       lv_obj_set_ext_click_area(ui_BrewScreen_startButton, 25);
+    if (ui_BrewScreen_profileSelectBtn)  lv_obj_set_ext_click_area(ui_BrewScreen_profileSelectBtn, 25);
+    if (ui_BrewScreen_ImgButton5)        lv_obj_set_ext_click_area(ui_BrewScreen_ImgButton5, 20);
+    if (ui_BrewScreen_upDurationButton)  lv_obj_set_ext_click_area(ui_BrewScreen_upDurationButton, 15);
+    if (ui_BrewScreen_downDurationButton) lv_obj_set_ext_click_area(ui_BrewScreen_downDurationButton, 15);
+    if (ui_BrewScreen_upTempButton)      lv_obj_set_ext_click_area(ui_BrewScreen_upTempButton, 15);
+    if (ui_BrewScreen_downTempButton)    lv_obj_set_ext_click_area(ui_BrewScreen_downTempButton, 15);
+    if (ui_BrewScreen_tempContainer)     lv_obj_set_ext_click_area(ui_BrewScreen_tempContainer, 20);
+    if (ui_BrewScreen_Label1)            lv_obj_set_ext_click_area(ui_BrewScreen_Label1, 20);
+    ui_overhaul43_apply_brew();
 }
 
 void onSimpleProcessScreenLoad(lv_event_t *e) {
@@ -607,11 +579,18 @@ void onSimpleProcessScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_SimpleProcessScreen_goButton, 25);
     lv_obj_set_ext_click_area(ui_SimpleProcessScreen_ImgButton6, 20);
     lv_obj_set_ext_click_area(ui_SimpleProcessScreen_targetTemp, 60);
+    ui_overhaul43_apply_simple_process();
+    // Unhide go button now that overhaul has positioned it correctly.
+    // It was hidden at construction time to prevent a brief flash on steam entry.
+    if (ui_SimpleProcessScreen_goButton) {
+        lv_obj_clear_flag(ui_SimpleProcessScreen_goButton, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void onStatusScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_StatusScreen_pauseButton, 25);
     lv_obj_set_ext_click_area(ui_StatusScreen_ImgButton8, 20);
+    ui_overhaul43_apply_status();
 }
 
 void onGrindScreenLoad(lv_event_t *e) {
@@ -619,6 +598,7 @@ void onGrindScreenLoad(lv_event_t *e) {
     lv_obj_set_ext_click_area(ui_GrindScreen_downDurationButton, 40);
     lv_obj_set_ext_click_area(ui_GrindScreen_startButton, 25);
     lv_obj_set_ext_click_area(ui_GrindScreen_ImgButton2, 20);
+    ui_overhaul43_apply_grind();
 }
 
 void onProfileSettings(lv_event_t *e) { controller.getUI()->onBrewSettingsButton(); }
@@ -698,4 +678,11 @@ void onManualBrewSave(lv_event_t *e) {
 void onManualBrewDiscard(lv_event_t *e) {
     if (ui_ManualBrewScreen_savePanel)
         lv_obj_add_flag(ui_ManualBrewScreen_savePanel, LV_OBJ_FLAG_HIDDEN);
+}
+
+void onBrewSettings43(lv_event_t *e) {
+    lv_event_code_t event_code = lv_event_get_code(e);
+    if (event_code == LV_EVENT_CLICKED) {
+        controller.getUI()->changeScreen(&ui_ProfileScreen, &ui_ProfileScreen_screen_init);
+    }
 }

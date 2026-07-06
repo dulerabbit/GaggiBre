@@ -51,7 +51,7 @@ jobs:
           mv .pio/build/display/firmware.bin out/display-lilygo-firmware.bin
           mv .pio/build/display/partitions.bin out/display-lilygo-partitions.bin
           mv .pio/build/display/bootloader.bin out/display-lilygo-bootloader.bin
-      - name: Build display (Waveshare 4.3C)
+      - name: Build display (Waveshare 4.3)
         run: |
           pio run -e display-ws43
           mv .pio/build/display-ws43/firmware.bin out/display-ws43-firmware.bin
@@ -121,16 +121,6 @@ jobs:
           channel: 'stable'
           target: 'display'
           firmware_dir: 'upload/display'
-          firmware_files: 'bootloader.bin,partitions.bin,firmware.bin,filesystem.bin'
-      - uses: ./.github/actions/upload-firmware
-        continue-on-error: true
-        env:
-          UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
-          UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
-        with:
-          channel: 'stable'
-          target: 'display-ws43'
-          firmware_dir: 'upload/display-ws43'
           firmware_files: 'bootloader.bin,partitions.bin,firmware.bin,filesystem.bin'
       - uses: ./.github/actions/upload-firmware
         continue-on-error: true

@@ -42,6 +42,10 @@ lv_obj_t *ui_BrewScreen_byTimeButton = NULL;
 lv_obj_t *ui_BrewScreen_saveButton = NULL;
 lv_obj_t *ui_BrewScreen_acceptButton = NULL;
 lv_obj_t *ui_BrewScreen_saveAsNewButton = NULL;
+// Extra variables used by 43" layout
+lv_obj_t *ui_BrewScreen_profileLabel = NULL;
+lv_obj_t *ui_BrewScreen_targetLabel = NULL;
+lv_obj_t *ui_BrewScreen_byWeightButton = NULL;
 // event funtions
 void ui_event_BrewScreen(lv_event_t *e) {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -173,6 +177,36 @@ void ui_event_BrewScreen_saveAsNewButton(lv_event_t *e) {
 
     if (event_code == LV_EVENT_CLICKED) {
         onProfileSaveAsNew(e);
+    }
+}
+
+void ui_event_BrewScreen_volumetricButton(lv_event_t *e) {
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    if (event_code == LV_EVENT_CLICKED) {
+        onVolumetricClick(e);
+    }
+    if (event_code == LV_EVENT_LONG_PRESSED) {
+        onVolumetricHold(e);
+    }
+}
+
+void ui_event_BrewScreen_profileButton(lv_event_t *e) {
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    if (event_code == LV_EVENT_CLICKED) {
+        onProfileSelect(e);
+    }
+    if (event_code == LV_EVENT_LONG_PRESSED) {
+        onSelectedProfileAdaptiveToggle(e);
+    }
+}
+
+void ui_event_BrewScreen_byWeightButton(lv_event_t *e) {
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    if (event_code == LV_EVENT_CLICKED) {
+        onVolumetricHold(e);
     }
 }
 

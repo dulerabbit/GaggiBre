@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 class Display {
   public:
@@ -12,6 +14,7 @@ class Display {
     virtual uint16_t height() = 0;
     virtual uint8_t getPoint(int16_t *x, int16_t *y, uint8_t get_point) = 0;
     virtual bool supportsDirectMode() = 0;
+    virtual bool prefersFullRefresh() { return false; }
 
   protected:
     uint8_t _rotation;

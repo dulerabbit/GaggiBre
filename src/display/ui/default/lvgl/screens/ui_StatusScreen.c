@@ -28,6 +28,7 @@ lv_obj_t *ui_StatusScreen_brewBar = NULL;
 lv_obj_t *ui_StatusScreen_labelContainer = NULL;
 lv_obj_t *ui_StatusScreen_brewLabel = NULL;
 lv_obj_t *ui_StatusScreen_brewVolume = NULL;
+lv_obj_t *ui_StatusScreen_adaptiveLabel = NULL;
 // event funtions
 void ui_event_StatusScreen(lv_event_t *e) {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -312,4 +313,5 @@ void ui_StatusScreen_screen_destroy(void) {
     ui_StatusScreen_labelContainer = NULL;
     ui_StatusScreen_brewLabel = NULL;
     ui_StatusScreen_brewVolume = NULL;
+    ui_StatusScreen_adaptiveLabel = NULL;
 }

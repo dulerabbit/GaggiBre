@@ -11,6 +11,7 @@ class Driver {
     virtual void setBrightness(int brightness);
     virtual bool supportsSDCard();
     virtual bool installSDCard();
+    virtual void blinkDiag(int n) { (void)n; }
 };
 
 #endif // DRIVER_H

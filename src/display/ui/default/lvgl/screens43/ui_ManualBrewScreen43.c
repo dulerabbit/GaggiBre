@@ -14,39 +14,39 @@ void ui_ManualBrewScreen_screen_init_43(void) {
     // ── Sidebar dials ──────────────────────────────────────────────────────
     ui_ManualBrewScreen_dials = ui_dials43_create(ui_ManualBrewScreen);
 
-    // ── Drag zones overlaid on sidebar ────────────────────────────────────
-    // Top half: temperature (swipe up/down)
+    // ── Drag zones — side-column based (left column = temp, right column = pressure)
+    // Left column full height: temperature (swipe up/down)
     ui_ManualBrewScreen_tempZone = lv_obj_create(ui_ManualBrewScreen);
     lv_obj_remove_style_all(ui_ManualBrewScreen_tempZone);
-    lv_obj_set_size(ui_ManualBrewScreen_tempZone, 180, 240);
+    lv_obj_set_size(ui_ManualBrewScreen_tempZone, 60, 480);
     lv_obj_set_pos(ui_ManualBrewScreen_tempZone, 0, 0);
     lv_obj_add_flag(ui_ManualBrewScreen_tempZone, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(ui_ManualBrewScreen_tempZone, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(ui_ManualBrewScreen_tempZone, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    // Bottom half: pressure (swipe up/down)
+    // Right column full height: pressure (swipe up/down)
     ui_ManualBrewScreen_pressureZone = lv_obj_create(ui_ManualBrewScreen);
     lv_obj_remove_style_all(ui_ManualBrewScreen_pressureZone);
-    lv_obj_set_size(ui_ManualBrewScreen_pressureZone, 180, 240);
-    lv_obj_set_pos(ui_ManualBrewScreen_pressureZone, 0, 240);
+    lv_obj_set_size(ui_ManualBrewScreen_pressureZone, 60, 480);
+    lv_obj_set_pos(ui_ManualBrewScreen_pressureZone, 740, 0);
     lv_obj_add_flag(ui_ManualBrewScreen_pressureZone, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(ui_ManualBrewScreen_pressureZone, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(ui_ManualBrewScreen_pressureZone, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    // ── Main content panel (618×480 at x=182) ─────────────────────────────
+    // ── Main content panel (800×480, full-width) ───────────────────────────
     ui_ManualBrewScreen_contentPanel = lv_obj_create(ui_ManualBrewScreen);
     lv_obj_remove_style_all(ui_ManualBrewScreen_contentPanel);
-    lv_obj_set_size(ui_ManualBrewScreen_contentPanel, 618, 480);
-    lv_obj_set_pos(ui_ManualBrewScreen_contentPanel, 182, 0);
+    lv_obj_set_size(ui_ManualBrewScreen_contentPanel, 800, 480);
+    lv_obj_set_pos(ui_ManualBrewScreen_contentPanel, 0, 0);
     lv_obj_clear_flag(ui_ManualBrewScreen_contentPanel, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_bg_opa(ui_ManualBrewScreen_contentPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    // Back button (top-left of content panel)
+    // Back button — centred at top (overhaul will restyle to bare icon)
     ui_ManualBrewScreen_backButton = lv_imgbtn_create(ui_ManualBrewScreen_contentPanel);
     lv_imgbtn_set_src(ui_ManualBrewScreen_backButton, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_295763949, NULL);
-    lv_obj_set_size(ui_ManualBrewScreen_backButton, 44, 44);
-    lv_obj_set_align(ui_ManualBrewScreen_backButton, LV_ALIGN_TOP_LEFT);
-    lv_obj_set_pos(ui_ManualBrewScreen_backButton, 14, 14);
+    lv_obj_set_size(ui_ManualBrewScreen_backButton, 54, 54);
+    lv_obj_set_align(ui_ManualBrewScreen_backButton, LV_ALIGN_TOP_MID);
+    lv_obj_set_pos(ui_ManualBrewScreen_backButton, 0, 14);
     ui_object_set_themeable_style_property(ui_ManualBrewScreen_backButton, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_IMG_RECOLOR,     _ui_theme_color_NiceWhite);
     ui_object_set_themeable_style_property(ui_ManualBrewScreen_backButton, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_IMG_RECOLOR_OPA, _ui_theme_alpha_NiceWhite);
 
@@ -88,11 +88,11 @@ void ui_ManualBrewScreen_screen_init_43(void) {
     // Line widths
     lv_obj_set_style_line_width(ui_ManualBrewScreen_chart, 2, LV_PART_ITEMS | LV_STATE_DEFAULT);
 
-    // ── Pressure circle (bottom centre) ───────────────────────────────────
+    // ── Pressure circle (left of centre, lower half) ──────────────────────
     ui_ManualBrewScreen_pressureCircle = lv_obj_create(ui_ManualBrewScreen_contentPanel);
     lv_obj_set_size(ui_ManualBrewScreen_pressureCircle, 120, 120);
     lv_obj_set_align(ui_ManualBrewScreen_pressureCircle, LV_ALIGN_CENTER);
-    lv_obj_set_pos(ui_ManualBrewScreen_pressureCircle, 0, 130);
+    lv_obj_set_pos(ui_ManualBrewScreen_pressureCircle, -150, 110);
     lv_obj_clear_flag(ui_ManualBrewScreen_pressureCircle, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_radius(ui_ManualBrewScreen_pressureCircle, 60, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_ManualBrewScreen_pressureCircle, 2, LV_PART_MAIN | LV_STATE_DEFAULT);

@@ -119,6 +119,7 @@ class DefaultUI {
 
     bool rerender = false;
     unsigned long lastRender = 0;
+    unsigned long lastEffectEval = 0;
     bool wideDisplay = false;   // true when horizontal resolution > 481 (e.g. Waveshare 4.3C)
 
     int mode = MODE_STANDBY;
@@ -151,6 +152,12 @@ class DefaultUI {
 
     // Standby brightness control
     unsigned long standbyEnterTime = 0;
+    bool standbyDimApplied = false;  // true once the dim brightness has been set; reset on standby exit
+
+    // Briefly pause reactive redraw bursts right after switching screens to
+    // reduce visible shaking/tearing on RGB panels.
+    unsigned long screenSwitchStabilizeUntil = 0;
+    unsigned long screenSwitchCooldownUntil = 0;
 
     xTaskHandle taskHandle;
     static void loopTask(void *arg);

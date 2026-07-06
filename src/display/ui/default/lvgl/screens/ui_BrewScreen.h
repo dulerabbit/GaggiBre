@@ -58,6 +58,11 @@ extern void ui_event_BrewScreen_acceptButton(lv_event_t *e);
 extern lv_obj_t *ui_BrewScreen_acceptButton;
 extern void ui_event_BrewScreen_saveAsNewButton(lv_event_t *e);
 extern lv_obj_t *ui_BrewScreen_saveAsNewButton;
+// EXTRA EVENT HANDLERS (used by 43" layout)
+extern void ui_event_BrewScreen_volumetricButton(lv_event_t *e);
+extern void ui_event_BrewScreen_profileButton(lv_event_t *e);
+extern void ui_event_BrewScreen_byWeightButton(lv_event_t *e);
+
 // CUSTOM VARIABLES
 extern lv_obj_t *uic_BrewScreen_dials_tempGauge;
 extern lv_obj_t *uic_BrewScreen_dials_tempTarget;

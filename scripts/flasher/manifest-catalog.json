@@ -9,10 +9,10 @@
     },
     {
       "id": "display-ws43",
-      "label": "Display (Waveshare 4.3C)",
+      "label": "Display (Waveshare 4.3)",
       "manifest": "manifest-display-ws43.json",
       "chipFamily": "ESP32-S3",
-      "note": "Use for Waveshare ESP32-S3-Touch-LCD-4.3C boards only."
+      "note": "Use for Waveshare ESP32-S3-Touch-LCD-4.3 boards only."
     },
     {
       "id": "headless",

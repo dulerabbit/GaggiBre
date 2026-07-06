@@ -4,9 +4,9 @@
 #include "Driver.h"
 #include <display/drivers/Waveshare43/Waveshare43Panel.h>
 
-// Driver for the Waveshare ESP32-S3-Touch-LCD-4.3C (800×480 RGB parallel
-// panel).  isCompatible() probes the CH422G GPIO expander at its system
-// register I2C address (0x24) on SDA=8 / SCL=9 — unique to this board.
+// Driver for the Waveshare ESP32-S3-Touch-LCD-4.3C (800x480 RGB parallel
+// panel). isCompatible() probes the CH422G GPIO expander at its system
+// register I2C address (0x24) on SDA=8 / SCL=9.
 class Waveshare43Driver : public Driver {
   public:
     bool isCompatible() override;

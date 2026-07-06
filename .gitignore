@@ -10,3 +10,22 @@ data/w
 .codebuddy
 src/version.h
 src/display/ui/default/lvgl/project.info
+
+# Scratch / debug / build artifacts (local dev only, not for repo)
+*.log
+build_*.txt
+pio_build_*.txt
+pio_upload_*.txt
+pio_check_*.log
+upload_*.txt
+upload_*.log
+serial_*.txt
+serial_*.log
+diag_probe.txt
+flash_err.txt
+flash_out.txt
+verify_upload_*.log
+_diff_*.txt
+_orig_*.txt
+ws43_demo.zip
+ws43_demo/

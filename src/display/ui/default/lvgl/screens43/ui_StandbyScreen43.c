@@ -75,7 +75,7 @@ void ui_StandbyScreen_screen_init_43(void) {
     lv_obj_set_size(ui_StandbyScreen_touchIcon, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_StandbyScreen_touchIcon, LV_ALIGN_BOTTOM_MID);
     lv_obj_set_pos(ui_StandbyScreen_touchIcon, 0, -50);
-    lv_obj_add_flag(ui_StandbyScreen_touchIcon, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_ADV_HITTEST);
+    lv_obj_add_flag(ui_StandbyScreen_touchIcon, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(ui_StandbyScreen_touchIcon, LV_OBJ_FLAG_SCROLLABLE);
     lv_img_set_zoom(ui_StandbyScreen_touchIcon, 256);
     ui_object_set_themeable_style_property(ui_StandbyScreen_touchIcon, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_IMG_RECOLOR,     _ui_theme_color_NiceWhite);
@@ -86,7 +86,7 @@ void ui_StandbyScreen_screen_init_43(void) {
     lv_obj_set_size(ui_StandbyScreen_mainLabel, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_StandbyScreen_mainLabel, LV_ALIGN_BOTTOM_MID);
     lv_obj_set_pos(ui_StandbyScreen_mainLabel, 0, -14);
-    lv_label_set_text(ui_StandbyScreen_mainLabel, "Starting...");
+    lv_label_set_text(ui_StandbyScreen_mainLabel, "");
     lv_obj_set_style_text_font(ui_StandbyScreen_mainLabel, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
     ui_object_set_themeable_style_property(ui_StandbyScreen_mainLabel, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR, _ui_theme_color_NiceWhite);
     ui_object_set_themeable_style_property(ui_StandbyScreen_mainLabel, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,   _ui_theme_alpha_NiceWhite);

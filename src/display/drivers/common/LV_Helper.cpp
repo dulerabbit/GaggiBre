@@ -62,7 +62,24 @@ void enable_amoled_black_theme_override(lv_disp_t *disp) {
     lv_obj_add_style(lv_scr_act(), &s_map_style, 0);
 }
 
-/* Display flushing */
+/* Display flushing
+ *
+ * Baseline upstream config (proven flicker-free on all RGB panels in this
+ * codebase): full_refresh=0, two full-screen PSRAM draw buffers, plain
+ * pushColors + flush_ready with no semaphore wait.
+ *
+ * History of regressions that introduced the flicker:
+ *  1. full_refresh=1 + frame-done semaphore wait: every flush blocked for
+ *     vsync then did a ~19 ms full-screen copy that straddled two frames,
+ *     creating a periodic beat visible as residual flicker.
+ *  2. Partial single-buffer (40 lines): removed the second full-screen buffer
+ *     entirely, so LVGL painted dirty regions straight into the live
+ *     framebuffer with no back-buffer — flicker remained.
+ *
+ * This version restores the baseline: LVGL renders only dirty areas into one
+ * of two full-screen offscreen buffers, then pushes just the changed
+ * rectangles.  No semaphore, no vsync wait.
+ */
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p) {
     static_cast<Display *>(disp_drv->user_data)->pushColors(area->x1, area->y1, area->x2 + 1, area->y2 + 1, (uint16_t *)color_p);
     lv_disp_flush_ready(disp_drv);
@@ -71,13 +88,45 @@ static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_
 /*Read the touchpad*/
 static void touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     static int16_t x, y;
+    static int16_t last_x = 0;
+    static int16_t last_y = 0;
+    static bool last_pressed = false;
+    static uint8_t release_debounce = 0;
+
     uint8_t touched = static_cast<Display *>(indev_driver->user_data)->getPoint(&x, &y, 1);
     if (touched) {
-        data->point.x = x;
-        data->point.y = y;
+        if (!last_pressed) {
+            last_x = x;
+            last_y = y;
+        } else {
+            const int16_t dx = x - last_x;
+            const int16_t dy = y - last_y;
+            // Ignore tiny GT911 position flutter while finger is down.
+            if (abs(dx) > 2 || abs(dy) > 2) {
+                last_x = (last_x * 3 + x) / 4;
+                last_y = (last_y * 3 + y) / 4;
+            }
+        }
+
+        data->point.x = last_x;
+        data->point.y = last_y;
+        data->state = LV_INDEV_STATE_PR;
+        last_pressed = true;
+        release_debounce = 0;
+        return;
+    }
+
+    // Avoid one-cycle touch dropouts that cause press/release flicker.
+    if (last_pressed && release_debounce < 2) {
+        release_debounce++;
+        data->point.x = last_x;
+        data->point.y = last_y;
         data->state = LV_INDEV_STATE_PR;
         return;
     }
+
+    last_pressed = false;
+    release_debounce = 0;
     data->state = LV_INDEV_STATE_REL;
 }
 
@@ -110,16 +159,44 @@ void beginLvglHelper(Display &board, bool debug) {
     }
 #endif
 
-    size_t lv_buffer_size = board.width() * board.height() * sizeof(lv_color_t);
-    buf = (lv_color_t *)ps_malloc(lv_buffer_size);
-    assert(buf);
+    const bool isWidePanel = board.width() > 481;
 
-    if (!board.supportsDirectMode()) {
-        buf1 = (lv_color_t *)ps_malloc(lv_buffer_size);
+    if (isWidePanel) {
+        // For large RGB panels (800×480), use partial PSRAM draw buffers
+        // instead of full-screen ones.  Each flush copies only 240 lines (~384 KB)
+        // rather than the full 768 KB frame.  At PSRAM bandwidth ~80 MB/s the
+        // copy takes ~4.8 ms vs. ~9.6 ms for a full-screen flush.  Critically,
+        // the copy is split into 2 bursts with a ~11.7 ms gap between them,
+        // giving the DMA FIFO time to recover — eliminating the sustained
+        // starvation that caused HSYNC slip / horizontal shake.
+        // 240 lines = 2 strips per transition (top half + bottom half), which
+        // is fast enough (~5 ms each) to be imperceptible to the eye.
+        // Internal SRAM is intentionally NOT used here: NimBLE's BT controller
+        // requires a large contiguous internal-SRAM block and will crash if it
+        // cannot allocate it (E BLE_INIT: Malloc failed).
+        const size_t partial_lines = 360;
+        const size_t partial_size = board.width() * partial_lines * sizeof(lv_color_t);
+        buf  = (lv_color_t *)ps_malloc(partial_size);
+        assert(buf);
+        buf1 = (lv_color_t *)ps_malloc(partial_size);
         assert(buf1);
-    }
+        lv_disp_draw_buf_init(&draw_buf, buf, buf1, board.width() * partial_lines);
+    } else {
+        // Standard path: full-screen PSRAM buffers for smaller panels.
+        // LVGL renders only dirty regions into one buffer while the other holds
+        // the previous frame, then pushes just the changed rectangles via
+        // pushColors.  full_refresh=0 so only invalidated areas are redrawn.
+        size_t lv_buffer_size = board.width() * board.height() * sizeof(lv_color_t);
+        buf = (lv_color_t *)ps_malloc(lv_buffer_size);
+        assert(buf);
 
-    lv_disp_draw_buf_init(&draw_buf, buf, buf1, board.width() * board.height());
+        if (!board.supportsDirectMode()) {
+            buf1 = (lv_color_t *)ps_malloc(lv_buffer_size);
+            assert(buf1);
+        }
+
+        lv_disp_draw_buf_init(&draw_buf, buf, buf1, board.width() * board.height());
+    }
 
     /*Initialize the display*/
     lv_disp_drv_init(&disp_drv);

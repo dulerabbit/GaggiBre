@@ -25,9 +25,10 @@
 #include <display/plugins/VoicePlugin.h>
 #ifndef GAGGIMATE_HEADLESS
 #include <display/drivers/AmoledDisplayDriver.h>
+#include <display/drivers/ElecrowAdvance43Driver.h>
 #include <display/drivers/LilyGoDriver.h>
-#include <display/drivers/WaveshareDriver.h>
 #include <display/drivers/Waveshare43Driver.h>
+#include <display/drivers/WaveshareDriver.h>
 #endif
 
 const String LOG_TAG = F("Controller");
@@ -101,7 +102,9 @@ void Controller::setup() {
 
     pluginManager = new PluginManager();
 #ifndef GAGGIMATE_HEADLESS
+    driver->blinkDiag(2);
     ui = new DefaultUI(this, driver, pluginManager);
+    driver->blinkDiag(4);
     if (driver->supportsSDCard() && driver->installSDCard()) {
         sdcard = true;
         ESP_LOGI(LOG_TAG, "SD Card detected and mounted");
@@ -180,19 +183,29 @@ void Controller::connect() {
 
 #ifndef GAGGIMATE_HEADLESS
 void Controller::setupPanel() {
-    if (LilyGoDriver::getInstance()->isCompatible()) {
-        driver = LilyGoDriver::getInstance();
-    } else if (AmoledDisplayDriver::getInstance()->isCompatible()) {
+    // Use compile-time board flags when available to avoid false positives
+    // from the LilyGo GPIO-8 detection (that pin is I2C SDA on other boards).
+#if defined(FORCE_LILYGO_DRIVER)
+    driver = LilyGoDriver::getInstance();
+#elif defined(ELECROW43_BOARD)
+    driver = ElecrowAdvance43Driver::getInstance();
+#elif defined(WS43C_BOARD)
+    driver = Waveshare43Driver::getInstance();
+#else
+    if (AmoledDisplayDriver::getInstance()->isCompatible()) {
         driver = AmoledDisplayDriver::getInstance();
     } else if (Waveshare43Driver::getInstance()->isCompatible()) {
         driver = Waveshare43Driver::getInstance();
     } else if (WaveshareDriver::getInstance()->isCompatible()) {
         driver = WaveshareDriver::getInstance();
+    } else if (LilyGoDriver::getInstance()->isCompatible()) {
+        driver = LilyGoDriver::getInstance();
     } else {
         Serial.println("No compatible display driver found");
         delay(10000);
         ESP.restart();
     }
+#endif
     driver->init();
 }
 #endif

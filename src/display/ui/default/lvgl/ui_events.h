@@ -31,6 +31,10 @@ void onVolumetricClick(lv_event_t *e);
 void onVolumetricHold(lv_event_t *e);
 void onProfileSelect(lv_event_t *e);
 void onProfileSettings(lv_event_t *e);
+void onBrewAdaptiveToggle(lv_event_t *e);
+void onBrewProfileSelect(lv_event_t *e);
+void onBrewSettings(lv_event_t *e);
+void onBrewTare(lv_event_t *e);
 void onBrewTempLower(lv_event_t *e);
 void onBrewTempRaise(lv_event_t *e);
 void onBrewTimeRaise(lv_event_t *e);
@@ -56,6 +60,7 @@ void onManualBrewAdjustTemp(lv_event_t *e);
 void onManualBrewAdjustPressure(lv_event_t *e);
 void onManualBrewSave(lv_event_t *e);
 void onManualBrewDiscard(lv_event_t *e);
+void onBrewSettings43(lv_event_t *e);
 
 #ifdef __cplusplus
 } /*extern "C"*/
