@@ -40,7 +40,6 @@ Changed the stopping logic to use **actual measured weight** from the Bluetooth 
 - [ ] Profile with 30g volumetric target loads
 - [ ] Live weight displays during shot on screen
 - [ ] Shot stops at 30g ± 0.2g (not earlier)
-- [ ] Adaptive brew + volumetric works together
 
 ## Technical Details
 

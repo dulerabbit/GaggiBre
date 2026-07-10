@@ -8,7 +8,6 @@ This branch (`cursor/gaggimate-next-scaffold-eb99`) is **upstream Gaggimate mast
 - Full upstream stack: EEZ UI, NanoPb protocol v3, LittleFS, gear pump, WiFi watchdogs
 - Waveshare 4.3 / 4.3C board defs + drivers + `factory_16MB.csv`
 - `display-ws43` / `display-ws43c` PlatformIO envs
-- `AdaptiveBrewEngine` + `profile.adaptiveBrew` field (engine present; EEZ UI hook later)
 - `VoicePlugin` sources (compile only with `-DGAGGIMATE_VOICE_ENABLED`)
 - Web flasher assets + merge plan doc
 
@@ -23,7 +22,7 @@ This is **usable, not final**. Native wide EEZ layouts (using the full 800 px) s
 ## What is NOT done yet
 
 - Native 800×480 EEZ page layouts (Option C in the merge plan)
-- Adaptive pill / Profile Settings / Manual Brew on EEZ
+- Profile Settings / Manual Brew on EEZ
 - Matched flasher generation guards
 - WiFi polish (explicitly deferred)
 

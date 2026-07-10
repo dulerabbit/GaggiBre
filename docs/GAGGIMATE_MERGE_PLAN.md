@@ -2,7 +2,7 @@
 
 **Owner:** Cursor cloud agent (Dusan does not need to write code)  
 **Updated:** 2026-07-10  
-**Goal:** Make GaggiBre run on the **new Gaggimate stack** (EEZ UI + NanoPb protocol + modern controller) while keeping Waveshare 4.3, Adaptive Brew, Voice, flasher, and branding.
+**Goal:** Make GaggiBre run on the **new Gaggimate stack** (EEZ UI + NanoPb protocol + modern controller) while keeping Waveshare 4.3, Voice, flasher, and branding.
 
 WiFi is **deferred** (lowest priority). Do not block the merge on it.
 
@@ -37,7 +37,6 @@ upstream/master  ──►  GaggiBre-next (EEZ + NanoPb + LittleFS)
                          │
                          ├─ add Waveshare drivers + board envs
                          ├─ rebuild 4.3 UI on EEZ
-                         ├─ port Adaptive Brew
                          ├─ port Voice / Manual Brew / Profile Settings
                          ├─ port flasher + branding
                          └─ (later) WiFi polish
@@ -55,7 +54,6 @@ Difficulty of Waveshare-on-EEZ redraw: **~7.5 / 10**. Still the hard part — bu
 |---------|-------------------------|
 | Waveshare 4.3 / 4.3C | `boards/WaveshareS3Touch43*`, `src/display/drivers/Waveshare43*`, `factory_16MB.csv` |
 | Dual UI layouts | `src/display/ui/default/lvgl/screens43/` → **rebuild in EEZ** |
-| Adaptive Brew | `AdaptiveBrewEngine.*`, profile `adaptiveBrew`, `data/p/adapt.json` |
 | Voice | `VoicePlugin.*` |
 | Manual Brew / Profile Settings | SquareLine screens → **EEZ screens** |
 | Volumetric weight fix | `BrewProcess.h` logic (merge with upstream negative-weight fix) |
@@ -68,11 +66,11 @@ Difficulty of Waveshare-on-EEZ redraw: **~7.5 / 10**. Still the hard part — bu
 
 ```
 Phase 1  Scaffold GaggiBre-next from upstream/master          ✓
-Phase 2  Bring non-UI DNA (boards, drivers, Adaptive, Voice)  ✓
+Phase 2  Bring non-UI DNA (boards, drivers, Voice, flasher)  ✓
 Phase 3  LilyGo smoke: build + flash matched controller+display
 Phase 4a Waveshare MVP: letterbox 480 EEZ on 800×480          ✓ (this branch)
 Phase 4b Native EEZ 800×480 layouts (EEZ Studio / parallel tree)
-Phase 5  Wire Adaptive / Profile Settings / Manual Brew into EEZ
+Phase 5  Wire Profile Settings / Manual Brew into EEZ
 Phase 6  CI + flasher for ws43 on new stack
 Phase 7  Optional: WiFi coexistence / watchdogs / secure AP
 ```
@@ -86,7 +84,6 @@ Phase 7  Optional: WiFi coexistence / watchdogs / secure AP
 ### Phase 2 — Non-UI DNA
 - Copy Waveshare board JSON + drivers + partition table
 - Add `display-ws43` / `display-ws43c` envs (may not fully link until Phase 4)
-- Port `AdaptiveBrewEngine` + profile field (UI hook later)
 - Port `VoicePlugin` behind flag
 - Port flasher scripts (point at new artifacts when ready)
 
@@ -101,7 +98,6 @@ Phase 7  Optional: WiFi coexistence / watchdogs / secure AP
 - `DefaultUI` wide-display routing for EEZ screen IDs
 
 ### Phase 5 — Feature re-attach
-- Adaptive pill + engine live path
 - Gear → Profile Settings screen
 - Manual brew parity with LilyGo concepts
 - Branding on standby
@@ -131,7 +127,7 @@ Only after Waveshare EEZ works. Coexistence, STA/network watchdogs, icon gating,
 
 - [ ] Daily driver can move from backup SquareLine → GaggiBre-next
 - [ ] LilyGo + Waveshare both on EEZ
-- [ ] Adaptive + Profile Settings + Manual Brew restored
+- [ ] Profile Settings + Manual Brew restored
 - [ ] Controller/display always matched in flasher
 - [ ] Backup tags still restorable
 - [ ] WiFi issues tracked separately (non-blocking)

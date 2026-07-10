@@ -129,7 +129,6 @@ struct Profile {
     String type; // "standard" | "pro"
     String description;
     bool utility = false;
-    bool adaptiveBrew = false; // GaggiBre adaptive PI brew (feature-flagged)
     float temperature;
     bool favorite = false;
     bool selected = false;
@@ -242,7 +241,6 @@ inline bool parseProfile(const JsonObject &obj, Profile &profile) {
     profile.favorite = obj["favorite"] | false;
     profile.selected = obj["selected"] | false;
     profile.utility = obj["utility"] | false;
-    profile.adaptiveBrew = obj["adaptiveBrew"] | false;
 
     auto phasesArray = obj["phases"].as<JsonArray>();
     for (JsonObject p : phasesArray) {
@@ -341,7 +339,6 @@ inline void writeProfile(JsonObject &obj, const Profile &profile) {
     obj["favorite"] = profile.favorite;
     obj["selected"] = profile.selected;
     obj["utility"] = profile.utility;
-    obj["adaptiveBrew"] = profile.adaptiveBrew;
 
     auto phasesArray = obj["phases"].to<JsonArray>();
     for (const Phase &phase : profile.phases) {
