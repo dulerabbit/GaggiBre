@@ -1,46 +1,43 @@
-# GaggiBre-next scaffold status
+# GaggiBre-next — base material (flash this)
 
-This branch (`cursor/gaggimate-next-scaffold-eb99`) is **upstream Gaggimate master** plus GaggiBre DNA and a Waveshare EEZ MVP.
+Branch: `cursor/gaggimate-next-scaffold-eb99`
 
-## What landed
+This is the **matched stack for a controller already on new Gaggimate firmware** (NanoPb protocol). Do not flash old SquareLine display firmware against that PCB.
 
-### Phase 1–2 — scaffold
-- Full upstream stack: EEZ UI, NanoPb protocol v3, LittleFS, gear pump, WiFi watchdogs
-- Waveshare 4.3 / 4.3C board defs + drivers + `factory_16MB.csv`
-- `display-ws43` / `display-ws43c` PlatformIO envs
-- `VoicePlugin` sources (compile only with `-DGAGGIMATE_VOICE_ENABLED`)
-- Web flasher assets + merge plan doc
+## What’s in this base
+- Upstream Gaggimate: EEZ UI, NanoPb v3, LittleFS, modern controller protocol
+- Waveshare 4.3 / 4.3C drivers + `display-ws43` / `display-ws43c` envs
+- EEZ UI letterboxed on 800×480 (centered 480 UI + black side bars + touch remap)
+- **No Adaptive Brew mod** (removed)
 
-### Phase 4 MVP — Waveshare boots EEZ (letterbox)
-- LVGL keeps the upstream **480×480** EEZ coordinate space on Waveshare
-- Flush path centers that UI on the **800×480** panel (160 px black bars each side)
-- Touch X is remapped / clamped to the centered column
-- Side bars cleared black once at init
+## Flash Waveshare display (controller already new)
 
-This is **usable, not final**. Native wide EEZ layouts (using the full 800 px) still need EEZ Studio work.
-
-## What is NOT done yet
-
-- Native 800×480 EEZ page layouts (Option C in the merge plan)
-- Profile Settings / Manual Brew on EEZ
-- Matched flasher generation guards
-- WiFi polish (explicitly deferred)
-
-## How to try Waveshare on this branch
-
-Flash a **matched pair** from this branch only:
+From this branch, on the PC with the display on COM11:
 
 ```bash
-pio run -e controller -t upload --upload-port <PCB_PORT>
+git checkout cursor/gaggimate-next-scaffold-eb99
+git pull
 pio run -e display-ws43 -t upload --upload-port COM11
 ```
 
-Expect: round EEZ UI centered on the 4.3" panel with black side bars. Tap/swipe should hit the center column.
+If you also need to re-flash the PCB from this same generation:
 
-## Daily coffee
+```bash
+pio run -e controller -t upload --upload-port <PCB_PORT>
+```
 
-Until you sign off this stack, keep flashing: `backup/gaggibre-squareline-stable-eb99`
+## What to expect
+- Round EEZ UI centered on the 4.3" panel
+- Black bars left/right
+- Brew / menu / profile / grind should work with the new controller
 
-## Plan
+## Not done yet (OK for first bring-up)
+- Native full-width 800×480 EEZ layouts
+- Profile Settings / Manual Brew / Voice on EEZ
+- WiFi polish
 
-See [docs/GAGGIMATE_MERGE_PLAN.md](docs/GAGGIMATE_MERGE_PLAN.md)
+## Rollback (old SquareLine daily driver)
+Only if you flash **both** display and controller back to the old generation:
+
+`backup/gaggibre-squareline-stable-eb99`  
+(or Adaptive-removed SquareLine: `cursor/remove-adaptive-eb99`)
