@@ -4,9 +4,19 @@
 #include <utility>
 
 ProfileManager::ProfileManager(fs::FS *fs, String dir, Settings &settings, PluginManager *plugin_manager)
-    : _plugin_manager(plugin_manager), _settings(settings), _fs(fs), _dir(std::move(dir)) {}
+    : _plugin_manager(plugin_manager), _settings(settings), _fs(fs), _dir(std::move(dir)) {
+    _lock = xSemaphoreCreateRecursiveMutex();
+}
+
+ProfileManager::~ProfileManager() {
+    if (_lock != nullptr) {
+        vSemaphoreDelete(_lock);
+        _lock = nullptr;
+    }
+}
 
 void ProfileManager::setup() {
+    Lock guard(_lock);
     ensureDirectory();
     auto profiles = listProfiles();
     if (getFavoritedProfiles().empty() || profiles.empty() || _settings.getSelectedProfile() == "" ||
@@ -77,6 +87,7 @@ void ProfileManager::migrate() {
 }
 
 std::vector<String> ProfileManager::listProfiles() {
+    Lock guard(_lock);
     std::vector<String> uuids;
     File root = _fs->open(_dir);
     if (!root || !root.isDirectory())
@@ -110,6 +121,7 @@ std::vector<String> ProfileManager::listProfiles() {
 }
 
 bool ProfileManager::loadProfile(const String &uuid, Profile &outProfile) {
+    Lock guard(_lock);
     File file = _fs->open(profilePath(uuid), "r");
     if (!file)
         return false;
@@ -130,6 +142,7 @@ bool ProfileManager::loadProfile(const String &uuid, Profile &outProfile) {
 }
 
 bool ProfileManager::saveProfile(Profile &profile, bool reselect) {
+    Lock guard(_lock);
     if (!ensureDirectory())
         return false;
     bool isNew = false;
@@ -177,13 +190,18 @@ bool ProfileManager::saveProfile(Profile &profile, bool reselect) {
 }
 
 bool ProfileManager::deleteProfile(const String &uuid) {
+    Lock guard(_lock);
     removeFavoritedProfile(uuid);
     return _fs->remove(profilePath(uuid));
 }
 
-bool ProfileManager::profileExists(const String &uuid) { return _fs->exists(profilePath(uuid)); }
+bool ProfileManager::profileExists(const String &uuid) {
+    Lock guard(_lock);
+    return _fs->exists(profilePath(uuid));
+}
 
 void ProfileManager::selectProfile(const String &uuid) {
+    Lock guard(_lock);
     ESP_LOGI("ProfileManager", "Selecting profile %s", uuid.c_str());
     _settings.setSelectedProfile(uuid);
     selectedProfile = Profile{};
@@ -193,10 +211,13 @@ void ProfileManager::selectProfile(const String &uuid) {
 
 Profile &ProfileManager::getSelectedProfile() { return selectedProfile; }
 
-bool ProfileManager::loadSelectedProfile(Profile &outProfile) { return loadProfile(_settings.getSelectedProfile(), outProfile); }
+bool ProfileManager::loadSelectedProfile(Profile &outProfile) {
+    Lock guard(_lock);
+    return loadProfile(_settings.getSelectedProfile(), outProfile);
+}
 
 std::vector<String> ProfileManager::getFavoritedProfiles(bool validate) {
-
+    Lock guard(_lock);
     const auto &rawFavorites = _settings.getFavoritedProfiles();
     std::vector<String> result;
 
@@ -230,11 +251,13 @@ std::vector<String> ProfileManager::getFavoritedProfiles(bool validate) {
 }
 
 void ProfileManager::removeFavoritedProfile(String id) {
+    Lock guard(_lock);
     _settings.removeFavoritedProfile(id);
     _plugin_manager->trigger("profiles:profile:unfavorite", "id", id);
 }
 
 void ProfileManager::addFavoritedProfile(String id) {
+    Lock guard(_lock);
     _settings.addFavoritedProfile(id);
     _plugin_manager->trigger("profiles:profile:favorite", "id", id);
 }

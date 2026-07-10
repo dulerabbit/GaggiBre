@@ -21,8 +21,6 @@ constexpr int TEMP_HISTORY_LENGTH = 20 * 1000 / TEMP_HISTORY_INTERVAL;
 
 int16_t calculate_angle(int set_temp, int range, int offset);
 
-enum class BrewScreenState { Brew, Settings };
-
 class DefaultUI {
   public:
     DefaultUI(Controller *controller, Driver *driver, PluginManager *pluginManager);
@@ -35,7 +33,6 @@ class DefaultUI {
     // Interface methods
     void changeScreen(lv_obj_t **screen, void (*target_init)(void));
 
-    void changeBrewScreenMode(BrewScreenState state);
     void onProfileSwitch();
     void onNextProfile();
     void onPreviousProfile();
@@ -145,7 +142,6 @@ class DefaultUI {
     int adaptiveStateVersion = 0;
     int heatingFlash = 0;
     double bluetoothWeight = 0.0;
-    BrewScreenState brewScreenState = BrewScreenState::Brew;
 
     int profileDirty = 0;
     int currentProfileIdx;

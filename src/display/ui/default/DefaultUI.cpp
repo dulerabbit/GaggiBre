@@ -297,11 +297,12 @@ void DefaultUI::init() {
                       [this](Event const &) { changeScreen(&ui_StandbyScreen, &ui_StandbyScreen_screen_init); });
 
     pluginManager->on("profiles:profile:select", [this](Event const &event) {
-        profileManager->loadSelectedProfile(selectedProfile);
+        // ProfileManager already refreshed its in-memory selected profile.
+        selectedProfile = profileManager->getSelectedProfile();
         selectedProfileId = event.getString("id");
-        targetDuration = profileManager->getSelectedProfile().getTotalDuration();
-        targetVolume = profileManager->getSelectedProfile().getTotalVolume();
-        profileVolumetric = profileManager->getSelectedProfile().isVolumetric();
+        targetDuration = selectedProfile.getTotalDuration();
+        targetVolume = selectedProfile.getTotalVolume();
+        profileVolumetric = selectedProfile.isVolumetric();
         reloadProfiles();
         rerender = true;
     });
@@ -364,14 +365,16 @@ void DefaultUI::loop() {
         volumetricAvailable = controller->isVolumetricAvailable();
         bluetoothScales = controller->isBluetoothScaleHealthy();
         volumetricMode = volumetricAvailable && settings.isVolumetricTarget();
-        brewVolumetric = volumetricAvailable && profileVolumetric;
         grindActive = controller->isGrindActive();
         active = controller->isActive();
         smartGrindActive = settings.isSmartGrindActive();
         secondaryAction = settings.getSecondaryAction();
         grindAvailable = secondaryAction != SECONDARY_ACTION_NONE;
-        profileManager->loadSelectedProfile(selectedProfile);
+        // Use the in-memory selected profile — never hit SPIFFS on the LVGL render path.
+        selectedProfile = profileManager->getSelectedProfile();
         selectedProfileId = selectedProfile.id;
+        profileVolumetric = selectedProfile.isVolumetric();
+        brewVolumetric = volumetricAvailable && profileVolumetric;
         manualPressureTarget = controller->getMode() == MODE_MANUAL
                        ? controller->getManualPressureTarget()
                        : getManualProfilePressureTarget(selectedProfile, settings.getPressureScaling());
@@ -435,14 +438,6 @@ void DefaultUI::changeScreen(lv_obj_t **screen, void (*target_init)()) {
     targetScreen = screen;
     targetScreenInit = target_init;
     rerender = true;
-
-    // Reset some submenus
-    brewScreenState = BrewScreenState::Brew;
-}
-
-void DefaultUI::changeBrewScreenMode(BrewScreenState state) {
-    brewScreenState = state;
-    rerender = true;
 }
 
 void DefaultUI::onProfileSwitch() {
@@ -486,6 +481,7 @@ void DefaultUI::onProfileAdaptiveToggle() {
     if (profileId == selectedProfileId) {
         selectedProfile = profile;
         selectedProfileId = profile.id;
+        profileManager->getSelectedProfile() = profile;
     }
     pendingAdaptiveProfile = profile;
     pendingAdaptiveSave = true;
@@ -495,17 +491,18 @@ void DefaultUI::onProfileAdaptiveToggle() {
 }
 
 void DefaultUI::onSelectedProfileAdaptiveToggle() {
-    Profile profile{};
-    if (!profileManager->loadSelectedProfile(profile)) {
+    Profile profile = profileManager->getSelectedProfile();
+    if (profile.id.isEmpty()) {
         return;
     }
 
     profile.adaptiveBrew = !profile.adaptiveBrew;
 
-    // Update UI state immediately; defer filesystem write off the LVGL click path
-    // to avoid full-screen flash on large RGB panels.
+    // Update UI + in-memory ProfileManager state immediately; defer filesystem write
+    // off the LVGL click path to avoid full-screen flash on large RGB panels.
     selectedProfile = profile;
     selectedProfileId = profile.id;
+    profileManager->getSelectedProfile() = profile;
     pendingAdaptiveProfile = profile;
     pendingAdaptiveSave = true;
 
@@ -591,12 +588,20 @@ void DefaultUI::setupState() {
 }
 
 static void setGaugeValue(lv_obj_t *g, int32_t v, bool wide) {
+    if (g == nullptr) {
+        return;
+    }
     if (wide) {
+        // Skip no-op updates — VALUE_CHANGED recolors every segment and is expensive
+        // on the 4.3" RGB panel when fired every active rerender.
+        if (lv_bar_get_value(g) == v) {
+            return;
+        }
         lv_bar_set_value(g, v, LV_ANIM_OFF);
         // lv_bar_set_value does not emit LV_EVENT_VALUE_CHANGED — fire it manually
         // so the block-segment recolor callback in ui_comp_dials43.c runs.
         lv_event_send(g, LV_EVENT_VALUE_CHANGED, NULL);
-    } else {
+    } else if (lv_arc_get_value(g) != (int16_t)v) {
         lv_arc_set_value(g, (int16_t)v);
     }
 }
@@ -1113,10 +1118,7 @@ void DefaultUI::updateStandbyScreen() {
 
     if (!apActive && WiFi.status() == WL_CONNECTED && !updateActive && !error && !autotuning && !waitingForController &&
         initialized) {
-        time_t now;
-        struct tm timeinfo;
-
-        localtime_r(&now, &timeinfo);
+        struct tm timeinfo {};
         // allocate enough space for both 12h/24h time formats
         if (getLocalTime(&timeinfo, 500)) {
             char time[9];

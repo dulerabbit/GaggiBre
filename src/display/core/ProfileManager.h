@@ -6,10 +6,13 @@
 #include <display/core/Settings.h>
 #include <display/core/utils.h>
 #include <display/models/profile.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 class ProfileManager {
   public:
     ProfileManager(fs::FS *fs, String dir, Settings &settings, PluginManager *plugin_manager);
+    ~ProfileManager();
 
     void setup();
     std::vector<String> listProfiles();
@@ -26,11 +29,32 @@ class ProfileManager {
     void removeFavoritedProfile(String id);
 
   private:
+    class Lock {
+      public:
+        explicit Lock(SemaphoreHandle_t handle) : _handle(handle) {
+            if (_handle != nullptr) {
+                xSemaphoreTakeRecursive(_handle, portMAX_DELAY);
+            }
+        }
+        ~Lock() {
+            if (_handle != nullptr) {
+                xSemaphoreGiveRecursive(_handle);
+            }
+        }
+        Lock(const Lock &) = delete;
+        Lock &operator=(const Lock &) = delete;
+
+      private:
+        SemaphoreHandle_t _handle;
+    };
+
     Profile selectedProfile{};
     PluginManager *_plugin_manager;
     Settings &_settings;
     fs::FS *_fs;
     String _dir;
+    SemaphoreHandle_t _lock = nullptr;
+
     bool ensureDirectory() const;
     String profilePath(const String &uuid) const;
     void migrate();
