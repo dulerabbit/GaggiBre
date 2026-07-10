@@ -31,6 +31,11 @@ pio run -e controller -t upload --upload-port <PCB_PORT>
 - Black bars left/right
 - Brew / menu / profile / grind should work with the new controller
 
+## Blank screen after first scaffold flash?
+Fixed on this branch: letterbox side-bar paint used width as `x_end` for
+`esp_lcd_panel_draw_bitmap`, which can hang RGB bring-up. Pull latest and
+re-flash `display-ws43`. Backlight is also forced on at panel init.
+
 ## Not done yet (OK for first bring-up)
 - Native full-width 800×480 EEZ layouts
 - Profile Settings / Manual Brew / Voice on EEZ

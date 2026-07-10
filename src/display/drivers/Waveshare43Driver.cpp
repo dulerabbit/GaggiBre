@@ -23,5 +23,8 @@ void Waveshare43Driver::init() {
         }
         ESP.restart();
     }
+    // Force backlight on immediately so a later settings-driven fade cannot
+    // leave the panel dark if bring-up stalls before DefaultUI::setupPanel().
+    panel.setBrightness(255);
     beginLvglHelper(panel);
 }

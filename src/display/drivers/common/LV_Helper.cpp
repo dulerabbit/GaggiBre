@@ -32,25 +32,32 @@ static int16_t s_letterboxX = 0;
 
 static void clearLetterboxBars(Display &board, int16_t xOffset) {
     // Paint the unused left/right columns black once so pillarboxes aren't garbage.
+    //
+    // Waveshare/LilyGo pushColors() forwards to esp_lcd_panel_draw_bitmap(),
+    // which takes exclusive (x_start, y_start, x_end, y_end) — NOT width/height.
+    // Passing a width as x_end (e.g. x_start=640, x_end=160) can hang the RGB
+    // panel bring-up and leave a permanently blank screen.
     const uint16_t panelW = board.width();
     const uint16_t panelH = board.height();
     if (panelW <= kEezUiWidth) {
         return;
     }
 
-    const size_t stripPixels = static_cast<size_t>(xOffset) * panelH;
-    if (stripPixels == 0) {
+    const uint16_t leftEnd = static_cast<uint16_t>(xOffset);
+    const uint16_t rightStart = static_cast<uint16_t>(xOffset + kEezUiWidth);
+    if (leftEnd == 0 || rightStart >= panelW) {
         return;
     }
 
+    const uint16_t barWidth = leftEnd; // centered: left and right bars match
+    const size_t stripPixels = static_cast<size_t>(barWidth) * panelH;
     auto *strip = static_cast<uint16_t *>(ps_malloc(stripPixels * sizeof(uint16_t)));
     if (strip == nullptr) {
         return;
     }
     memset(strip, 0, stripPixels * sizeof(uint16_t));
-    board.pushColors(0, 0, static_cast<uint16_t>(xOffset), panelH, strip);
-    board.pushColors(static_cast<uint16_t>(xOffset + kEezUiWidth), 0, static_cast<uint16_t>(panelW - xOffset - kEezUiWidth),
-                     panelH, strip);
+    board.pushColors(0, 0, leftEnd, panelH, strip);
+    board.pushColors(rightStart, 0, panelW, panelH, strip);
     free(strip);
 }
 
