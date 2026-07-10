@@ -67,16 +67,31 @@ void beginLvglHelper(Display &board, bool debug) {
     }
 #endif
 
-    size_t lv_buffer_size = board.width() * board.height() * sizeof(lv_color_t);
-    buf = (lv_color_t *)ps_malloc(lv_buffer_size);
-    assert(buf);
+    const bool isWidePanel = board.width() > 481;
 
-    if (!board.supportsDirectMode()) {
-        buf1 = (lv_color_t *)ps_malloc(lv_buffer_size);
+    if (isWidePanel) {
+        // For large RGB panels (800×480), use partial PSRAM draw buffers.
+        // Full-screen buffers starve the DMA FIFO and fight NimBLE's need for
+        // contiguous internal SRAM. Ported from GaggiBre Waveshare support.
+        const size_t partial_lines = 360;
+        const size_t partial_size = board.width() * partial_lines * sizeof(lv_color_t);
+        buf = (lv_color_t *)ps_malloc(partial_size);
+        assert(buf);
+        buf1 = (lv_color_t *)ps_malloc(partial_size);
         assert(buf1);
-    }
+        lv_disp_draw_buf_init(&draw_buf, buf, buf1, board.width() * partial_lines);
+    } else {
+        size_t lv_buffer_size = board.width() * board.height() * sizeof(lv_color_t);
+        buf = (lv_color_t *)ps_malloc(lv_buffer_size);
+        assert(buf);
 
-    lv_disp_draw_buf_init(&draw_buf, buf, buf1, board.width() * board.height());
+        if (!board.supportsDirectMode()) {
+            buf1 = (lv_color_t *)ps_malloc(lv_buffer_size);
+            assert(buf1);
+        }
+
+        lv_disp_draw_buf_init(&draw_buf, buf, buf1, board.width() * board.height());
+    }
 
     /*Initialize the display*/
     lv_disp_drv_init(&disp_drv);
@@ -85,7 +100,7 @@ void beginLvglHelper(Display &board, bool debug) {
     disp_drv.ver_res = board.height();
     disp_drv.flush_cb = disp_flush;
     disp_drv.draw_buf = &draw_buf;
-    disp_drv.full_refresh = 0;
+    disp_drv.full_refresh = board.prefersFullRefresh() ? 1 : 0;
     disp_drv.direct_mode = board.supportsDirectMode();
     disp_drv.user_data = &board;
     lv_disp_drv_register(&disp_drv);

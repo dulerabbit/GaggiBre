@@ -36,8 +36,12 @@
 #else
 #include <display/drivers/AmoledDisplayDriver.h>
 #include <display/drivers/LilyGoDriver.h>
+#include <display/drivers/Waveshare43Driver.h>
 #include <display/drivers/WaveshareDriver.h>
 #endif
+#endif
+#if defined(GAGGIMATE_VOICE_ENABLED)
+#include <display/plugins/VoicePlugin.h>
 #endif
 
 const String LOG_TAG = F("Controller");
@@ -103,6 +107,9 @@ void Controller::setup() {
 #endif
     pluginManager->registerPlugin(new LedControlPlugin());
     pluginManager->registerPlugin(new AutoWakeupPlugin());
+#if defined(GAGGIMATE_VOICE_ENABLED)
+    pluginManager->registerPlugin(new VoicePlugin());
+#endif
     pluginManager->setup(this);
 
     pluginManager->on("profiles:profile:save", [this](Event const &event) {
@@ -148,10 +155,16 @@ void Controller::setupPanel() {
 #ifdef GAGGIMATE_SIM
     driver = SdlDriver::getInstance(); // desktop SDL panel
 #else
+#if defined(WS43C_BOARD)
+    // Waveshare 4.3 builds always use the 800×480 driver.
+    driver = Waveshare43Driver::getInstance();
+#else
     if (LilyGoDriver::getInstance()->isCompatible()) {
         driver = LilyGoDriver::getInstance();
     } else if (AmoledDisplayDriver::getInstance()->isCompatible()) {
         driver = AmoledDisplayDriver::getInstance();
+    } else if (Waveshare43Driver::getInstance()->isCompatible()) {
+        driver = Waveshare43Driver::getInstance();
     } else if (WaveshareDriver::getInstance()->isCompatible()) {
         driver = WaveshareDriver::getInstance();
     } else {
@@ -159,6 +172,7 @@ void Controller::setupPanel() {
         delay(10000);
         ESP.restart();
     }
+#endif
 #endif
     driver->init();
 }

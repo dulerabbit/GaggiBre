@@ -12,6 +12,9 @@ class Display {
     virtual uint16_t height() = 0;
     virtual uint8_t getPoint(int16_t *x, int16_t *y, uint8_t get_point) = 0;
     virtual bool supportsDirectMode() = 0;
+    // Wide RGB panels (e.g. Waveshare 800×480) may prefer a different refresh
+    // strategy; default keeps upstream LilyGo/Amoled behavior.
+    virtual bool prefersFullRefresh() { return false; }
 
   protected:
     uint8_t _rotation;
