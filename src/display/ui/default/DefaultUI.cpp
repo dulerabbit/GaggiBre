@@ -518,7 +518,18 @@ void DefaultUI::onSelectedProfileAdaptiveToggle() {
 
     adaptiveStateVersion++;
     profileDirty = true;
-    rerender = true;
+
+    // Lightweight in-place pill update — avoid a full rerender/effect storm.
+    if (ui_BrewScreen_Label1 && adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
+        const bool adaptiveOn = selectedProfile.adaptiveBrew;
+        lv_label_set_text_fmt(ui_BrewScreen_Label1, "Adaptive %s", adaptiveOn ? "ON" : "OFF");
+        lv_obj_set_style_border_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_70 : LV_OPA_40,
+                                    LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_30 : LV_OPA_TRANSP,
+                                LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_text_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_COVER : LV_OPA_70,
+                                  LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
 }
 
 void DefaultUI::onBrewSettingsButton() { onBrewProfileSettings(); }
@@ -1002,7 +1013,7 @@ void DefaultUI::setupReactive() {
             if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
                 const bool adaptiveOn = selectedProfile.adaptiveBrew;
                 lv_label_set_text_fmt(ui_BrewScreen_Label1, "Adaptive %s", adaptiveOn ? "ON" : "OFF");
-                // Minimal restyle: only opacity/state changes that actually flip with the toggle.
+                // Pill outline/shape is set at screen init; only toggle ON/OFF appearance here.
                 lv_obj_set_style_border_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_70 : LV_OPA_40,
                                             LV_PART_MAIN | LV_STATE_DEFAULT);
                 lv_obj_set_style_bg_opa(ui_BrewScreen_Label1, adaptiveOn ? LV_OPA_30 : LV_OPA_TRANSP,
@@ -1022,21 +1033,6 @@ void DefaultUI::setupReactive() {
     effect_mgr.use_effect(
         [=] { return currentScreen == ui_ProfileSettingsScreen; },
         [=]() {
-            if (!ui_ProfileSettingsScreen_adaptiveLabel) {
-                return;
-            }
-            if (adaptive::AdaptiveBrewEngine::isFeatureEnabled()) {
-                const bool adaptiveOn = selectedProfile.adaptiveBrew;
-                lv_label_set_text_fmt(ui_ProfileSettingsScreen_adaptiveLabel, "Adaptive %s", adaptiveOn ? "ON" : "OFF");
-                lv_obj_set_style_border_opa(ui_ProfileSettingsScreen_adaptiveLabel, adaptiveOn ? LV_OPA_70 : LV_OPA_40,
-                                            LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_opa(ui_ProfileSettingsScreen_adaptiveLabel, adaptiveOn ? LV_OPA_30 : LV_OPA_TRANSP,
-                                        LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_text_opa(ui_ProfileSettingsScreen_adaptiveLabel, adaptiveOn ? LV_OPA_COVER : LV_OPA_70,
-                                          LV_PART_MAIN | LV_STATE_DEFAULT);
-            } else {
-                lv_label_set_text(ui_ProfileSettingsScreen_adaptiveLabel, "Adaptive unavailable");
-            }
             if (ui_ProfileSettingsScreen_saveButton) {
                 ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_saveButton, LV_PART_MAIN | LV_STATE_DEFAULT,
                                                        LV_STYLE_IMG_RECOLOR,
@@ -1054,7 +1050,7 @@ void DefaultUI::setupReactive() {
                                                        profileDirty ? _ui_theme_alpha_NiceWhite : _ui_theme_alpha_SemiDark);
             }
         },
-        &adaptiveStateVersion, &profileDirty);
+        &profileDirty);
     effect_mgr.use_effect(
         [=] { return currentScreen == ui_BrewScreen; },
         [=]() {

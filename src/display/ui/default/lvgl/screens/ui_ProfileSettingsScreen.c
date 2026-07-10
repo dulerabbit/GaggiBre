@@ -139,26 +139,8 @@ void ui_ProfileSettingsScreen_screen_init(void) {
                                            _ui_theme_alpha_NiceWhite);
 
     ui_ProfileSettingsScreen_adaptiveLabel = lv_label_create(ui_ProfileSettingsScreen);
-    lv_obj_set_width(ui_ProfileSettingsScreen_adaptiveLabel, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_ProfileSettingsScreen_adaptiveLabel, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_ProfileSettingsScreen_adaptiveLabel, 0);
-    lv_obj_set_y(ui_ProfileSettingsScreen_adaptiveLabel, -80);
-    lv_obj_set_align(ui_ProfileSettingsScreen_adaptiveLabel, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_ProfileSettingsScreen_adaptiveLabel, "Adaptive OFF");
-    lv_obj_add_flag(ui_ProfileSettingsScreen_adaptiveLabel, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_text_font(ui_ProfileSettingsScreen_adaptiveLabel, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui_ProfileSettingsScreen_adaptiveLabel, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui_ProfileSettingsScreen_adaptiveLabel, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui_ProfileSettingsScreen_adaptiveLabel, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui_ProfileSettingsScreen_adaptiveLabel, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui_ProfileSettingsScreen_adaptiveLabel, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_ProfileSettingsScreen_adaptiveLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_ProfileSettingsScreen_adaptiveLabel, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_ProfileSettingsScreen_adaptiveLabel, LV_OPA_40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_adaptiveLabel, LV_PART_MAIN | LV_STATE_DEFAULT,
-                                           LV_STYLE_TEXT_COLOR, _ui_theme_color_NiceWhite);
-    ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_adaptiveLabel, LV_PART_MAIN | LV_STATE_DEFAULT,
-                                           LV_STYLE_TEXT_OPA, _ui_theme_alpha_NiceWhite);
+    lv_label_set_text(ui_ProfileSettingsScreen_adaptiveLabel, "");
+    lv_obj_add_flag(ui_ProfileSettingsScreen_adaptiveLabel, LV_OBJ_FLAG_HIDDEN);
 
     ui_ProfileSettingsScreen_adjustments = lv_obj_create(ui_ProfileSettingsScreen);
     lv_obj_remove_style_all(ui_ProfileSettingsScreen_adjustments);
@@ -322,7 +304,6 @@ void ui_ProfileSettingsScreen_screen_init(void) {
     lv_obj_add_event_cb(ui_ProfileSettingsScreen_acceptButton, ui_event_ProfileSettingsScreen_acceptButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_ProfileSettingsScreen_saveAsNewButton, ui_event_ProfileSettingsScreen_saveAsNewButton, LV_EVENT_ALL,
                         NULL);
-    lv_obj_add_event_cb(ui_ProfileSettingsScreen_adaptiveLabel, ui_event_ProfileSettingsScreen_adaptiveLabel, LV_EVENT_ALL, NULL);
 
     uic_ProfileSettingsScreen_dials_tempGauge = ui_comp_get_child(ui_ProfileSettingsScreen_dials, UI_COMP_DIALS_TEMPGAUGE);
     uic_ProfileSettingsScreen_dials_tempTarget = ui_comp_get_child(ui_ProfileSettingsScreen_dials, UI_COMP_DIALS_TEMPTARGET);

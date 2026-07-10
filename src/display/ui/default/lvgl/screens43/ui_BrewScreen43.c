@@ -114,16 +114,28 @@ void ui_BrewScreen_screen_init_43(void) {
     lv_obj_set_style_bg_opa(ui_BrewScreen_profileInfo, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
     // NOTE: do NOT add LV_OBJ_FLAG_HIDDEN here — DefaultUI controls visibility via effect_mgr
 
-    // Adaptive label (styled dynamically by DefaultUI)
+    // Adaptive pill button (outline/shape set here; ON/OFF opa toggled by DefaultUI)
     ui_BrewScreen_Label1 = lv_label_create(ui_BrewScreen_profileInfo);
     lv_obj_set_size(ui_BrewScreen_Label1, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_BrewScreen_Label1, LV_ALIGN_TOP_MID);
     lv_obj_set_pos(ui_BrewScreen_Label1, 0, 4);
-    lv_label_set_text(ui_BrewScreen_Label1, "Selected profile");
+    lv_label_set_text(ui_BrewScreen_Label1, "Adaptive OFF");
     lv_obj_set_style_text_font(ui_BrewScreen_Label1, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
     ui_object_set_themeable_style_property(ui_BrewScreen_Label1, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR, _ui_theme_color_NiceWhite);
     ui_object_set_themeable_style_property(ui_BrewScreen_Label1, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,   _ui_theme_alpha_NiceWhite);
     lv_obj_add_flag(ui_BrewScreen_Label1, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_radius(ui_BrewScreen_Label1, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui_BrewScreen_Label1, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui_BrewScreen_Label1, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui_BrewScreen_Label1, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui_BrewScreen_Label1, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_BrewScreen_Label1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_BrewScreen_Label1, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_BrewScreen_Label1, LV_OPA_40, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_BrewScreen_Label1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_BrewScreen_Label1, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_BrewScreen_Label1, LV_OPA_70, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_ext_click_area(ui_BrewScreen_Label1, 12);
 
     // Profile row: hamburger | name | gear
     ui_BrewScreen_Container3 = lv_obj_create(ui_BrewScreen_profileInfo);

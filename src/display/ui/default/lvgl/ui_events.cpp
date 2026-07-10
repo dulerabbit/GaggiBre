@@ -522,7 +522,11 @@ void onManualBrewToggle(lv_event_t *e) {
         recordManualPressurePoint(getManualPressureTarget());
     }
 
-    controller.getUI()->markDirty();
+    // Swap play/stop icon in place; let the normal active-state loop refresh the rest.
+    if (ui_ManualBrewScreen_startButton) {
+        lv_imgbtn_set_src(ui_ManualBrewScreen_startButton, LV_IMGBTN_STATE_RELEASED, nullptr,
+                          controller.isActive() ? &ui_img_1456692430 : &ui_img_445946954, nullptr);
+    }
 }
 
 void onProfileScreenLoad(lv_event_t *e) {

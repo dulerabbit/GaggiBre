@@ -48,31 +48,16 @@ void ui_ProfileSettingsScreen_screen_init_43(void) {
     ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_profileName, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
                                            _ui_theme_alpha_NiceWhite);
 
+    // Adaptive lives on the brew screen only — keep a hidden placeholder for symbol compatibility.
     ui_ProfileSettingsScreen_adaptiveLabel = lv_label_create(ui_ProfileSettingsScreen);
-    lv_obj_set_size(ui_ProfileSettingsScreen_adaptiveLabel, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_align(ui_ProfileSettingsScreen_adaptiveLabel, LV_ALIGN_TOP_MID);
-    lv_obj_set_pos(ui_ProfileSettingsScreen_adaptiveLabel, 0, 165);
-    lv_label_set_text(ui_ProfileSettingsScreen_adaptiveLabel, "Adaptive OFF");
-    lv_obj_add_flag(ui_ProfileSettingsScreen_adaptiveLabel, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_text_font(ui_ProfileSettingsScreen_adaptiveLabel, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui_ProfileSettingsScreen_adaptiveLabel, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui_ProfileSettingsScreen_adaptiveLabel, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui_ProfileSettingsScreen_adaptiveLabel, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui_ProfileSettingsScreen_adaptiveLabel, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui_ProfileSettingsScreen_adaptiveLabel, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_ProfileSettingsScreen_adaptiveLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_ProfileSettingsScreen_adaptiveLabel, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_ProfileSettingsScreen_adaptiveLabel, LV_OPA_40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_adaptiveLabel, LV_PART_MAIN | LV_STATE_DEFAULT,
-                                           LV_STYLE_TEXT_COLOR, _ui_theme_color_NiceWhite);
-    ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_adaptiveLabel, LV_PART_MAIN | LV_STATE_DEFAULT,
-                                           LV_STYLE_TEXT_OPA, _ui_theme_alpha_NiceWhite);
+    lv_label_set_text(ui_ProfileSettingsScreen_adaptiveLabel, "");
+    lv_obj_add_flag(ui_ProfileSettingsScreen_adaptiveLabel, LV_OBJ_FLAG_HIDDEN);
 
     ui_ProfileSettingsScreen_adjustments = lv_obj_create(ui_ProfileSettingsScreen);
     lv_obj_remove_style_all(ui_ProfileSettingsScreen_adjustments);
     lv_obj_set_size(ui_ProfileSettingsScreen_adjustments, 560, 140);
     lv_obj_set_align(ui_ProfileSettingsScreen_adjustments, LV_ALIGN_TOP_MID);
-    lv_obj_set_pos(ui_ProfileSettingsScreen_adjustments, 0, 220);
+    lv_obj_set_pos(ui_ProfileSettingsScreen_adjustments, 0, 180);
     lv_obj_set_flex_flow(ui_ProfileSettingsScreen_adjustments, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(ui_ProfileSettingsScreen_adjustments, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
@@ -169,35 +154,51 @@ void ui_ProfileSettingsScreen_screen_init_43(void) {
     ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_upDurationButton, LV_PART_MAIN | LV_STATE_DEFAULT,
                                            LV_STYLE_IMG_RECOLOR_OPA, _ui_theme_alpha_NiceWhite);
 
+    // Native icon sizes only — oversized imgbtn widgets tile and look "doubled".
     ui_ProfileSettingsScreen_saveButton = lv_imgbtn_create(ui_ProfileSettingsScreen);
     lv_imgbtn_set_src(ui_ProfileSettingsScreen_saveButton, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_1594943393, NULL);
-    lv_obj_set_size(ui_ProfileSettingsScreen_saveButton, 40, 40);
+    lv_imgbtn_set_src(ui_ProfileSettingsScreen_saveButton, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_1594943393, NULL);
+    lv_obj_set_size(ui_ProfileSettingsScreen_saveButton, 30, 30);
     lv_obj_set_align(ui_ProfileSettingsScreen_saveButton, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_pos(ui_ProfileSettingsScreen_saveButton, -90, -30);
+    lv_obj_set_pos(ui_ProfileSettingsScreen_saveButton, -90, -34);
+    lv_obj_set_style_bg_opa(ui_ProfileSettingsScreen_saveButton, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_ProfileSettingsScreen_saveButton, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_all(ui_ProfileSettingsScreen_saveButton, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_saveButton, LV_PART_MAIN | LV_STATE_DEFAULT,
                                            LV_STYLE_IMG_RECOLOR, _ui_theme_color_NiceWhite);
     ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_saveButton, LV_PART_MAIN | LV_STATE_DEFAULT,
                                            LV_STYLE_IMG_RECOLOR_OPA, _ui_theme_alpha_NiceWhite);
+    lv_obj_set_ext_click_area(ui_ProfileSettingsScreen_saveButton, 20);
 
     ui_ProfileSettingsScreen_acceptButton = lv_imgbtn_create(ui_ProfileSettingsScreen);
     lv_imgbtn_set_src(ui_ProfileSettingsScreen_acceptButton, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_631115820, NULL);
-    lv_obj_set_size(ui_ProfileSettingsScreen_acceptButton, 44, 44);
+    lv_imgbtn_set_src(ui_ProfileSettingsScreen_acceptButton, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_631115820, NULL);
+    lv_obj_set_size(ui_ProfileSettingsScreen_acceptButton, 40, 40);
     lv_obj_set_align(ui_ProfileSettingsScreen_acceptButton, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_pos(ui_ProfileSettingsScreen_acceptButton, 0, -28);
+    lv_obj_set_pos(ui_ProfileSettingsScreen_acceptButton, 0, -30);
+    lv_obj_set_style_bg_opa(ui_ProfileSettingsScreen_acceptButton, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_ProfileSettingsScreen_acceptButton, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_all(ui_ProfileSettingsScreen_acceptButton, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_acceptButton, LV_PART_MAIN | LV_STATE_DEFAULT,
                                            LV_STYLE_IMG_RECOLOR, _ui_theme_color_NiceWhite);
     ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_acceptButton, LV_PART_MAIN | LV_STATE_DEFAULT,
                                            LV_STYLE_IMG_RECOLOR_OPA, _ui_theme_alpha_NiceWhite);
+    lv_obj_set_ext_click_area(ui_ProfileSettingsScreen_acceptButton, 20);
 
     ui_ProfileSettingsScreen_saveAsNewButton = lv_imgbtn_create(ui_ProfileSettingsScreen);
     lv_imgbtn_set_src(ui_ProfileSettingsScreen_saveAsNewButton, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_1464184441, NULL);
-    lv_obj_set_size(ui_ProfileSettingsScreen_saveAsNewButton, 40, 40);
+    lv_imgbtn_set_src(ui_ProfileSettingsScreen_saveAsNewButton, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_1464184441, NULL);
+    lv_obj_set_size(ui_ProfileSettingsScreen_saveAsNewButton, 30, 30);
     lv_obj_set_align(ui_ProfileSettingsScreen_saveAsNewButton, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_pos(ui_ProfileSettingsScreen_saveAsNewButton, 90, -30);
+    lv_obj_set_pos(ui_ProfileSettingsScreen_saveAsNewButton, 90, -34);
+    lv_obj_set_style_bg_opa(ui_ProfileSettingsScreen_saveAsNewButton, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_ProfileSettingsScreen_saveAsNewButton, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_all(ui_ProfileSettingsScreen_saveAsNewButton, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_saveAsNewButton, LV_PART_MAIN | LV_STATE_DEFAULT,
                                            LV_STYLE_IMG_RECOLOR, _ui_theme_color_NiceWhite);
     ui_object_set_themeable_style_property(ui_ProfileSettingsScreen_saveAsNewButton, LV_PART_MAIN | LV_STATE_DEFAULT,
                                            LV_STYLE_IMG_RECOLOR_OPA, _ui_theme_alpha_NiceWhite);
+    lv_obj_set_ext_click_area(ui_ProfileSettingsScreen_saveAsNewButton, 20);
 
     lv_obj_add_event_cb(ui_ProfileSettingsScreen, ui_event_ProfileSettingsScreen, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_ProfileSettingsScreen_backButton, ui_event_ProfileSettingsScreen_backButton, LV_EVENT_ALL, NULL);
@@ -211,7 +212,6 @@ void ui_ProfileSettingsScreen_screen_init_43(void) {
     lv_obj_add_event_cb(ui_ProfileSettingsScreen_acceptButton, ui_event_ProfileSettingsScreen_acceptButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_ProfileSettingsScreen_saveAsNewButton, ui_event_ProfileSettingsScreen_saveAsNewButton, LV_EVENT_ALL,
                         NULL);
-    lv_obj_add_event_cb(ui_ProfileSettingsScreen_adaptiveLabel, ui_event_ProfileSettingsScreen_adaptiveLabel, LV_EVENT_ALL, NULL);
 
     uic_ProfileSettingsScreen_dials_tempGauge = ui_comp_get_child(ui_ProfileSettingsScreen_dials, UI_COMP_DIALS_TEMPGAUGE);
     uic_ProfileSettingsScreen_dials_tempTarget = ui_comp_get_child(ui_ProfileSettingsScreen_dials, UI_COMP_DIALS_TEMPTARGET);
