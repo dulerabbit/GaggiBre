@@ -67,10 +67,11 @@ Difficulty of Waveshare-on-EEZ redraw: **~7.5 / 10**. Still the hard part — bu
 ## 3. Phase order (WiFi last)
 
 ```
-Phase 1  Scaffold GaggiBre-next from upstream/master     ← current
-Phase 2  Bring non-UI DNA (boards, drivers, Adaptive engine, Voice, flasher)
+Phase 1  Scaffold GaggiBre-next from upstream/master          ✓
+Phase 2  Bring non-UI DNA (boards, drivers, Adaptive, Voice)  ✓
 Phase 3  LilyGo smoke: build + flash matched controller+display
-Phase 4  EEZ Waveshare 4.3 layouts (the big UI redraw)
+Phase 4a Waveshare MVP: letterbox 480 EEZ on 800×480          ✓ (this branch)
+Phase 4b Native EEZ 800×480 layouts (EEZ Studio / parallel tree)
 Phase 5  Wire Adaptive / Profile Settings / Manual Brew into EEZ
 Phase 6  CI + flasher for ws43 on new stack
 Phase 7  Optional: WiFi coexistence / watchdogs / secure AP

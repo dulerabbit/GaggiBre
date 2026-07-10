@@ -6,30 +6,79 @@
  * Ltd
  * @date      2024-01-22
  *
+ * GaggiBre: on wide panels (e.g. Waveshare 800×480) LVGL keeps the upstream
+ * 480×480 EEZ coordinate space and the flush/touch paths letterbox into the
+ * physical panel. Native 800×480 EEZ layouts land in a later phase.
  */
 #include "LV_Helper.h"
+#include <cstring>
 
 #if LV_VERSION_CHECK(9, 0, 0)
 #error "Currently not supported 9.x"
 #endif
+
+// Upstream EEZ UI is authored for a 480×480 circular display.
+static constexpr uint16_t kEezUiWidth = 480;
+static constexpr uint16_t kEezUiHeight = 480;
 
 static lv_disp_draw_buf_t draw_buf;
 static lv_disp_drv_t disp_drv;
 static lv_indev_drv_t indev_drv;
 static lv_color_t *buf = NULL;
 static lv_color_t *buf1 = NULL;
+static Display *s_board = nullptr;
+static bool s_letterbox = false;
+static int16_t s_letterboxX = 0;
+
+static void clearLetterboxBars(Display &board, int16_t xOffset) {
+    // Paint the unused left/right columns black once so pillarboxes aren't garbage.
+    const uint16_t panelW = board.width();
+    const uint16_t panelH = board.height();
+    if (panelW <= kEezUiWidth) {
+        return;
+    }
+
+    const size_t stripPixels = static_cast<size_t>(xOffset) * panelH;
+    if (stripPixels == 0) {
+        return;
+    }
+
+    auto *strip = static_cast<uint16_t *>(ps_malloc(stripPixels * sizeof(uint16_t)));
+    if (strip == nullptr) {
+        return;
+    }
+    memset(strip, 0, stripPixels * sizeof(uint16_t));
+    board.pushColors(0, 0, static_cast<uint16_t>(xOffset), panelH, strip);
+    board.pushColors(static_cast<uint16_t>(xOffset + kEezUiWidth), 0, static_cast<uint16_t>(panelW - xOffset - kEezUiWidth),
+                     panelH, strip);
+    free(strip);
+}
 
 /* Display flushing */
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p) {
-    static_cast<Display *>(disp_drv->user_data)->pushColors(area->x1, area->y1, area->x2 + 1, area->y2 + 1, (uint16_t *)color_p);
+    auto *board = static_cast<Display *>(disp_drv->user_data);
+    const int16_t x1 = area->x1 + (s_letterbox ? s_letterboxX : 0);
+    const int16_t y1 = area->y1;
+    const int16_t x2 = area->x2 + 1 + (s_letterbox ? s_letterboxX : 0);
+    const int16_t y2 = area->y2 + 1;
+    board->pushColors(static_cast<uint16_t>(x1), static_cast<uint16_t>(y1), static_cast<uint16_t>(x2),
+                      static_cast<uint16_t>(y2), reinterpret_cast<uint16_t *>(color_p));
     lv_disp_flush_ready(disp_drv);
 }
 
 /*Read the touchpad*/
 static void touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     static int16_t x, y;
-    uint8_t touched = static_cast<Display *>(indev_driver->user_data)->getPoint(&x, &y, 1);
+    auto *board = static_cast<Display *>(indev_driver->user_data);
+    uint8_t touched = board->getPoint(&x, &y, 1);
     if (touched) {
+        if (s_letterbox) {
+            x = static_cast<int16_t>(x - s_letterboxX);
+            if (x < 0 || x >= static_cast<int16_t>(kEezUiWidth) || y < 0 || y >= static_cast<int16_t>(kEezUiHeight)) {
+                data->state = LV_INDEV_STATE_REL;
+                return;
+            }
+        }
         data->point.x = x;
         data->point.y = y;
         data->state = LV_INDEV_STATE_PR;
@@ -67,21 +116,27 @@ void beginLvglHelper(Display &board, bool debug) {
     }
 #endif
 
-    const bool isWidePanel = board.width() > 481;
+    s_board = &board;
+    s_letterbox = board.width() > 481;
+    s_letterboxX = s_letterbox ? static_cast<int16_t>((board.width() - kEezUiWidth) / 2) : 0;
 
-    if (isWidePanel) {
-        // For large RGB panels (800×480), use partial PSRAM draw buffers.
-        // Full-screen buffers starve the DMA FIFO and fight NimBLE's need for
-        // contiguous internal SRAM. Ported from GaggiBre Waveshare support.
+    // LVGL coordinate space matches the EEZ project (480×480). On wide panels
+    // the flush path letterboxes into the physical framebuffer.
+    const uint16_t uiW = s_letterbox ? kEezUiWidth : board.width();
+    const uint16_t uiH = s_letterbox ? kEezUiHeight : board.height();
+
+    if (s_letterbox) {
+        // Partial PSRAM draw buffers for 800×480-class panels.
         const size_t partial_lines = 360;
-        const size_t partial_size = board.width() * partial_lines * sizeof(lv_color_t);
+        const size_t partial_size = static_cast<size_t>(uiW) * partial_lines * sizeof(lv_color_t);
         buf = (lv_color_t *)ps_malloc(partial_size);
         assert(buf);
         buf1 = (lv_color_t *)ps_malloc(partial_size);
         assert(buf1);
-        lv_disp_draw_buf_init(&draw_buf, buf, buf1, board.width() * partial_lines);
+        lv_disp_draw_buf_init(&draw_buf, buf, buf1, uiW * partial_lines);
+        clearLetterboxBars(board, s_letterboxX);
     } else {
-        size_t lv_buffer_size = board.width() * board.height() * sizeof(lv_color_t);
+        size_t lv_buffer_size = static_cast<size_t>(uiW) * uiH * sizeof(lv_color_t);
         buf = (lv_color_t *)ps_malloc(lv_buffer_size);
         assert(buf);
 
@@ -90,14 +145,13 @@ void beginLvglHelper(Display &board, bool debug) {
             assert(buf1);
         }
 
-        lv_disp_draw_buf_init(&draw_buf, buf, buf1, board.width() * board.height());
+        lv_disp_draw_buf_init(&draw_buf, buf, buf1, uiW * uiH);
     }
 
     /*Initialize the display*/
     lv_disp_drv_init(&disp_drv);
-    /* display resolution */
-    disp_drv.hor_res = board.width();
-    disp_drv.ver_res = board.height();
+    disp_drv.hor_res = uiW;
+    disp_drv.ver_res = uiH;
     disp_drv.flush_cb = disp_flush;
     disp_drv.draw_buf = &draw_buf;
     disp_drv.full_refresh = board.prefersFullRefresh() ? 1 : 0;
