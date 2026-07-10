@@ -15,6 +15,7 @@ void ui_StatusScreen_screen_init_43(void);
 void ui_ManualBrewScreen_screen_init_43(void);
 void ui_SimpleProcessScreen_screen_init_43(void);
 void ui_ProfileScreen_screen_init_43(void);
+void ui_ProfileSettingsScreen_screen_init_43(void);
 void ui_GrindScreen_screen_init_43(void);
 
 #ifdef __cplusplus

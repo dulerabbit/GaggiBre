@@ -12,7 +12,9 @@
 class Controller;
 
 constexpr int RERENDER_INTERVAL_IDLE = 2500;
-constexpr int RERENDER_INTERVAL_ACTIVE = 100;
+constexpr int RERENDER_INTERVAL_ACTIVE = 175;
+constexpr unsigned long SCREEN_SWITCH_STABILIZE_MS = 120;
+constexpr unsigned long SCREEN_SWITCH_COOLDOWN_MS = 80;
 
 constexpr int TEMP_HISTORY_INTERVAL = 250;
 constexpr int TEMP_HISTORY_LENGTH = 20 * 1000 / TEMP_HISTORY_INTERVAL;
@@ -41,6 +43,8 @@ class DefaultUI {
     void onProfileAdaptiveToggle();
     void onSelectedProfileAdaptiveToggle();
     void onBrewSettingsButton();
+    void onBrewProfileSettings();
+    void leaveProfileSettings();
     void setBrightness(int brightness) {
         if (panelDriver) {
             panelDriver->setBrightness(brightness);
@@ -82,6 +86,11 @@ class DefaultUI {
     unsigned long lastTempLog = 0;
     unsigned long lastManualChartUpdate = 0;
     bool lastManualBrewActive = false;
+    bool pendingManualSavePanel = false;
+    bool pendingManualChartClear = false;
+    bool pendingAdaptiveSave = false;
+    bool skipNextProfileSaveReload = false;
+    Profile pendingAdaptiveProfile{};
 
     void updateTempHistory();
     void updateTempStableFlag();

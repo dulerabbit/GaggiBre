@@ -129,7 +129,7 @@ bool ProfileManager::loadProfile(const String &uuid, Profile &outProfile) {
     return true;
 }
 
-bool ProfileManager::saveProfile(Profile &profile) {
+bool ProfileManager::saveProfile(Profile &profile, bool reselect) {
     if (!ensureDirectory())
         return false;
     bool isNew = false;
@@ -164,10 +164,11 @@ bool ProfileManager::saveProfile(Profile &profile) {
     }
 
     if (profile.id == selectedProfile.id) {
-        selectedProfile = Profile{};
-        loadSelectedProfile(selectedProfile);
+        selectedProfile = profile;
     }
-    selectProfile(_settings.getSelectedProfile());
+    if (reselect) {
+        selectProfile(_settings.getSelectedProfile());
+    }
     _plugin_manager->trigger("profiles:profile:save", "id", profile.id);
     if (isNew) {
         addFavoritedProfile(profile.id);

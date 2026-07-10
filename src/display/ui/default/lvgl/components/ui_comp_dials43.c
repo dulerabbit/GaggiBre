@@ -54,10 +54,12 @@
 // ── Per-instance block arrays stored as user_data on the bar ─────────────────
 typedef struct {
     lv_obj_t *blocks[TEMP_BLOCK_COUNT];
+    int8_t lastLit[TEMP_BLOCK_COUNT];
 } temp_blocks_t;
 
 typedef struct {
     lv_obj_t *blocks[PRES_BLOCK_COUNT];
+    int8_t lastLit[PRES_BLOCK_COUNT];
 } pres_blocks_t;
 
 // ── Helper: free the user_data allocation when the bar is deleted ─────────────
@@ -81,7 +83,9 @@ static void temp_bar_event_cb(lv_event_t *e) {
         if (!inst->blocks[i]) continue;
         // Proportional threshold — no integer-truncation drift.
         // Block i (0=top) lights when val*COUNT >= (COUNT-i)*max
-        bool lit = (val * TEMP_BLOCK_COUNT >= (TEMP_BLOCK_COUNT - i) * max);
+        const int8_t lit = (val * TEMP_BLOCK_COUNT >= (TEMP_BLOCK_COUNT - i) * max) ? 1 : 0;
+        if (inst->lastLit[i] == lit) continue;
+        inst->lastLit[i] = lit;
         lv_obj_set_style_bg_color(inst->blocks[i],
             lv_color_hex(lit ? TEMP_COLOR_ON : TEMP_COLOR_OFF),
             LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -102,7 +106,9 @@ static void pres_bar_event_cb(lv_event_t *e) {
         if (!inst->blocks[i]) continue;
         // Proportional threshold — no integer-truncation drift.
         // Block i (0=top) lights when val*COUNT >= (COUNT-i)*max
-        bool lit = (val * PRES_BLOCK_COUNT >= (PRES_BLOCK_COUNT - i) * max);
+        const int8_t lit = (val * PRES_BLOCK_COUNT >= (PRES_BLOCK_COUNT - i) * max) ? 1 : 0;
+        if (inst->lastLit[i] == lit) continue;
+        inst->lastLit[i] = lit;
         lv_obj_set_style_bg_color(inst->blocks[i],
             lv_color_hex(lit ? PRES_COLOR_ON : PRES_COLOR_OFF),
             LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -126,6 +132,9 @@ lv_obj_t *ui_dials43_create(lv_obj_t *comp_parent) {
 
     temp_blocks_t *temp_inst = (temp_blocks_t *)lv_mem_alloc(sizeof(temp_blocks_t));
     lv_memset_00(temp_inst, sizeof(temp_blocks_t));
+    for (int i = 0; i < TEMP_BLOCK_COUNT; i++) {
+        temp_inst->lastLit[i] = -1;
+    }
 
     // Blocks fill from TOP_MARGIN down to just above the icon area
     int temp_start_y = TOP_MARGIN;
@@ -183,6 +192,9 @@ lv_obj_t *ui_dials43_create(lv_obj_t *comp_parent) {
 
     pres_blocks_t *pres_inst = (pres_blocks_t *)lv_mem_alloc(sizeof(pres_blocks_t));
     lv_memset_00(pres_inst, sizeof(pres_blocks_t));
+    for (int i = 0; i < PRES_BLOCK_COUNT; i++) {
+        pres_inst->lastLit[i] = -1;
+    }
 
     int pres_start_y = TOP_MARGIN;
     int pres_x = 800 - PRES_BLOCK_W;  // flush to right edge

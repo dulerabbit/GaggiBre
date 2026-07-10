@@ -601,20 +601,20 @@ void onGrindScreenLoad(lv_event_t *e) {
     ui_overhaul43_apply_grind();
 }
 
-void onProfileSettings(lv_event_t *e) { controller.getUI()->onBrewSettingsButton(); }
+void onProfileSettings(lv_event_t *e) { controller.getUI()->onBrewProfileSettings(); }
 
 void onProfileSave(lv_event_t *e) {
     controller.onProfileSave();
     controller.getUI()->markProfileClean();
-    controller.getUI()->changeBrewScreenMode(BrewScreenState::Brew);
+    controller.getUI()->leaveProfileSettings();
 }
 
-void onProfileAccept(lv_event_t *e) { controller.getUI()->changeBrewScreenMode(BrewScreenState::Brew); }
+void onProfileAccept(lv_event_t *e) { controller.getUI()->leaveProfileSettings(); }
 
 void onProfileSaveAsNew(lv_event_t *e) {
     controller.onProfileSaveAsNew();
     controller.getUI()->markProfileClean();
-    controller.getUI()->changeBrewScreenMode(BrewScreenState::Brew);
+    controller.getUI()->leaveProfileSettings();
 }
 
 void onVolumetricHold(lv_event_t *e) {
@@ -683,6 +683,6 @@ void onManualBrewDiscard(lv_event_t *e) {
 void onBrewSettings43(lv_event_t *e) {
     lv_event_code_t event_code = lv_event_get_code(e);
     if (event_code == LV_EVENT_CLICKED) {
-        controller.getUI()->changeScreen(&ui_ProfileScreen, &ui_ProfileScreen_screen_init);
+        controller.getUI()->onBrewProfileSettings();
     }
 }

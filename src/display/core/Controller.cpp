@@ -25,7 +25,9 @@
 #include <display/plugins/VoicePlugin.h>
 #ifndef GAGGIMATE_HEADLESS
 #include <display/drivers/AmoledDisplayDriver.h>
+#if defined(ELECROW43_BOARD)
 #include <display/drivers/ElecrowAdvance43Driver.h>
+#endif
 #include <display/drivers/LilyGoDriver.h>
 #include <display/drivers/Waveshare43Driver.h>
 #include <display/drivers/WaveshareDriver.h>
@@ -760,7 +762,8 @@ void Controller::activate() {
             pluginManager->trigger("controller:brew:prestart");
         }
     }
-    delay(200);
+    // Avoid blocking the LVGL input/render thread with delay() here — it caused
+    // full-screen flash/glitch on large RGB panels (especially Waveshare 4.3).
     adaptiveBrewEngine.reset();
     if (mode == MODE_MANUAL) {
         manualPressureTarget = getProfileManualPressureTarget(profileManager->getSelectedProfile(), settings.getPressureScaling());

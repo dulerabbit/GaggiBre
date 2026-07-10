@@ -14,7 +14,7 @@ class ProfileManager {
     void setup();
     std::vector<String> listProfiles();
     bool loadProfile(const String &uuid, Profile &outProfile);
-    bool saveProfile(Profile &profile);
+    bool saveProfile(Profile &profile, bool reselect = true);
     bool deleteProfile(const String &uuid);
     bool profileExists(const String &uuid);
     void selectProfile(const String &uuid);
