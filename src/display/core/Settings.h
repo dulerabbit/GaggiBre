@@ -128,6 +128,7 @@ class Settings {
     int getEmptyTankDistance() const { return emptyTankDistance; }
     int getFullTankDistance() const { return fullTankDistance; }
     int getAltRelayFunction() const { return altRelayFunction; }
+    int getSecondaryAction() const { return secondaryAction; }
     bool isAutoWakeupEnabled() const { return autowakeupEnabled; }
     std::vector<AutoWakeupSchedule> getAutoWakeupSchedules() const { return autowakeupSchedules; }
     String getButtonBehavior(int index) const {
@@ -208,6 +209,7 @@ class Settings {
     void setEmptyTankDistance(int empty_tank_distance);
     void setFullTankDistance(int full_tank_distance);
     void setAltRelayFunction(int alt_relay_function);
+    void setSecondaryAction(int secondary_action);
     void setAutoWakeupEnabled(bool enabled);
     void setAutoWakeupSchedules(const std::vector<AutoWakeupSchedule> &schedules);
     void setButtonBehavior(int index, String behavior);
@@ -289,6 +291,8 @@ class Settings {
     int fullTankDistance = 50;
 
     int altRelayFunction = ALT_RELAY_GRIND; // Default to grind
+    // Menu 4th icon: Manual Brew (GaggiBre default) or Grind. Coupled to altRelayFunction.
+    int secondaryAction = SECONDARY_ACTION_MANUAL_BREW;
     std::vector<String> buttonBehavior;
 
     // Pump settings

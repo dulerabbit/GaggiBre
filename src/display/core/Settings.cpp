@@ -113,6 +113,12 @@ Settings::Settings() {
     emptyTankDistance = preferences.getInt("sr_ed", 210);
     fullTankDistance = preferences.getInt("sr_fd", 30);
     altRelayFunction = preferences.getInt("alt_relay", ALT_RELAY_GRIND);
+    secondaryAction = preferences.getInt("sec_act", SECONDARY_ACTION_MANUAL_BREW);
+    if (!preferences.isKey("sec_act")) {
+        // Migrate: derive secondary from existing alt-relay preference.
+        secondaryAction = (altRelayFunction == ALT_RELAY_GRIND) ? SECONDARY_ACTION_GRIND : SECONDARY_ACTION_MANUAL_BREW;
+    }
+    altRelayFunction = (secondaryAction == SECONDARY_ACTION_GRIND) ? ALT_RELAY_GRIND : ALT_RELAY_NONE;
 
     commutationGain = preferences.getFloat("p_cm", DEFAULT_COMMUTATION_GAIN);
     convergenceGain = preferences.getFloat("p_cv", DEFAULT_CONVERGENCE_GAIN);
@@ -461,7 +467,21 @@ void Settings::setFullTankDistance(int full_tank_distance) {
     save();
 }
 
-void Settings::setAltRelayFunction(int alt_relay_function) { altRelayFunction = alt_relay_function; }
+void Settings::setAltRelayFunction(int alt_relay_function) {
+    altRelayFunction = alt_relay_function;
+    if (altRelayFunction == ALT_RELAY_GRIND) {
+        secondaryAction = SECONDARY_ACTION_GRIND;
+    } else if (secondaryAction == SECONDARY_ACTION_GRIND) {
+        secondaryAction = SECONDARY_ACTION_MANUAL_BREW;
+    }
+    save();
+}
+
+void Settings::setSecondaryAction(int secondary_action) {
+    secondaryAction = std::clamp(secondary_action, SECONDARY_ACTION_NONE, SECONDARY_ACTION_GRIND);
+    altRelayFunction = (secondaryAction == SECONDARY_ACTION_GRIND) ? ALT_RELAY_GRIND : ALT_RELAY_NONE;
+    save();
+}
 
 void Settings::setAutoWakeupEnabled(bool enabled) {
     autowakeupEnabled = enabled;
@@ -590,6 +610,7 @@ void Settings::doSave() {
     preferences.putInt("sr_ed", emptyTankDistance);
     preferences.putInt("sr_fd", fullTankDistance);
     preferences.putInt("alt_relay", altRelayFunction);
+    preferences.putInt("sec_act", secondaryAction);
     preferences.putString("btnb", implode(buttonBehavior, ","));
     preferences.putFloat("p_cm", commutationGain);
     preferences.putFloat("p_cv", convergenceGain);

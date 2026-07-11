@@ -18,6 +18,7 @@
 #include "esp_sntp.h"
 
 #include <display/ui/default/eez/ui.h>
+#include <display/ui/default/manual/ManualBrewScreen.h>
 
 static EffectManager effect_mgr;
 
@@ -134,6 +135,9 @@ void DefaultUI::init() {
         case MODE_BREW:
             changeScreen(SCREEN_ID_BREW_SCREEN);
             break;
+        case MODE_MANUAL:
+            changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
+            break;
         case MODE_GRIND:
             changeScreen(SCREEN_ID_GRIND_SCREEN);
             break;
@@ -147,8 +151,19 @@ void DefaultUI::init() {
             break;
         };
     });
-    pluginManager->on("controller:brew:start", [this](Event const &event) { changeScreen(SCREEN_ID_STATUS_SCREEN); });
+    pluginManager->on("controller:brew:start", [this](Event const &event) {
+        // Manual Brew stays on its own screen (live pressure control + chart).
+        if (controller->getMode() == MODE_MANUAL) {
+            changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
+            return;
+        }
+        changeScreen(SCREEN_ID_STATUS_SCREEN);
+    });
     pluginManager->on("controller:brew:clear", [this](Event const &event) {
+        if (controller->getMode() == MODE_MANUAL) {
+            changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
+            return;
+        }
         if (eez_flow_get_current_screen() == SCREEN_ID_STATUS_SCREEN) {
             changeScreen(SCREEN_ID_BREW_SCREEN);
         }
@@ -263,7 +278,12 @@ void DefaultUI::loop() {
         eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_GRIND_WEIGHT_TARGET, grindWeightTarget);
 
         handleScreenChange();
-        currentScreen = static_cast<ScreensEnum>(eez_flow_get_current_screen());
+        if (targetScreen == SCREEN_ID_MANUAL_BREW_SCREEN) {
+            currentScreen = SCREEN_ID_MANUAL_BREW_SCREEN;
+            ManualBrewScreen::update();
+        } else {
+            currentScreen = static_cast<ScreensEnum>(eez_flow_get_current_screen());
+        }
         effect_mgr.evaluate_all();
 
         if (currentScreen == SCREEN_ID_STANDBY_SCREEN) {
@@ -346,6 +366,7 @@ void DefaultUI::onVolumetricDelete() {
 
 void DefaultUI::setupPanel() {
     ui_init();
+    ManualBrewScreen::init(controller);
     setupState();
     applyTheme();
     ui_tick();
@@ -426,6 +447,7 @@ void DefaultUI::setupState() {
                               positionMenuIcon(objects.btn_steam_1, step * 1 - rotationOffset, radius);
                               positionMenuIcon(objects.btn_water_1, step * 2 - rotationOffset, radius);
                               positionMenuIcon(objects.btn_grind_1, step * 3 - rotationOffset, radius);
+                              ManualBrewScreen::onMenuIconApply(objects.btn_grind_1);
                               // positionMenuIcon(objects.btn_settings_1, step * (3 + iconOffset) - rotationOffset, radius);
                           },
                           &grindAvailable);
@@ -439,8 +461,17 @@ void DefaultUI::handleScreenChange() {
             const ::Settings &settings = controller->getSettings();
             setBrightness(settings.getMainBrightness());
         }
-        eez_flow_set_screen(targetScreen, LV_SCR_LOAD_ANIM_NONE, 0, 0);
-        animateGaugeTicks(currentScreen, targetScreen);
+
+        if (currentScreen == SCREEN_ID_MANUAL_BREW_SCREEN && targetScreen != SCREEN_ID_MANUAL_BREW_SCREEN) {
+            ManualBrewScreen::hide();
+        }
+
+        if (targetScreen == SCREEN_ID_MANUAL_BREW_SCREEN) {
+            ManualBrewScreen::show();
+        } else {
+            eez_flow_set_screen(targetScreen, LV_SCR_LOAD_ANIM_NONE, 0, 0);
+            animateGaugeTicks(currentScreen, targetScreen);
+        }
         rerender = true;
     }
 }
@@ -508,7 +539,8 @@ void DefaultUI::updateState() {
     targetTemp = static_cast<int>(controller->getTargetTemp());
     pressureAvailable = controller->getSystemInfo().capabilities.pressure ? 1 : 0;
     wifiConnected = WiFi.status() == WL_CONNECTED;
-    grindAvailable = settings.isSmartGrindActive() || settings.getAltRelayFunction() == ALT_RELAY_GRIND;
+    // 4th menu icon: Manual Brew or Grind (secondaryAction), not only alt-relay grind.
+    grindAvailable = settings.getSecondaryAction() != SECONDARY_ACTION_NONE || settings.isSmartGrindActive();
 
     uiFlags.brew_adjustments(brewScreenState == BrewScreenState::Settings);
     uiFlags.active(controller->isActive());
@@ -584,7 +616,8 @@ void DefaultUI::updateBoiler() {
     boiler.current_temperature(controller->getCurrentTemp());
     boiler.target_temperature(controller->getTargetTemp());
     boiler.current_pressure(pressure);
-    boiler.target_pressure(controller->getTargetPressure());
+    boiler.target_pressure(controller->getMode() == MODE_MANUAL ? controller->getManualPressureTarget()
+                                                                : controller->getTargetPressure());
     boiler.max_temperature(160.0f);
     boiler.max_pressure(settings.getPressureScaling());
 }

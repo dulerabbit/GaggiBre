@@ -38,8 +38,14 @@ re-flash `display-ws43`. Backlight is also forced on at panel init.
 
 ## Not done yet (OK for first bring-up)
 - Native full-width 800×480 EEZ layouts
-- Profile Settings / Manual Brew / Voice on EEZ
+- Voice on EEZ
 - WiFi polish
+
+## Manual Brew (this generation)
+Menu 4th icon → Manual Brew (default) or Grind (`secondaryAction` / web setting).
+Works on LilyGo and letterboxed Waveshare with the same behavior:
+- Swipe temp (left), tap pressure strip (right)
+- Start/stop, live chart, save shot as profile
 
 ## Rollback (old SquareLine daily driver)
 Only if you flash **both** display and controller back to the old generation:

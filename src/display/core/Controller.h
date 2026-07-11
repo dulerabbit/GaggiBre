@@ -30,6 +30,7 @@ class Controller {
 
     void setMode(int newMode);
     void setTargetTemp(float temperature);
+    void setManualPressureTarget(float pressure);
     void setPressureScale();
     void setPumpModelCoeffs();
     void setPidSettings();
@@ -49,6 +50,7 @@ class Controller {
     bool isVolumetricAvailable() const;
     bool isSDCard() const { return sdcard; }
     virtual float getTargetPressure() const { return targetPressure; }
+    virtual float getManualPressureTarget() const { return manualPressureTarget; }
     virtual float getTargetFlow() const { return targetFlow; }
     virtual float getCurrentPressure() const { return pressure; }
     virtual float getCurrentPuckFlow() const { return currentPuckFlow; }
@@ -152,6 +154,7 @@ class Controller {
     float currentTemp = 0;
     float pressure = 0.0f;
     float targetPressure = 0.0f;
+    float manualPressureTarget = 9.0f;
     float currentPuckFlow = 0.0f;
     float currentPumpFlow = 0.0f;
     float targetFlow = 0.0f;

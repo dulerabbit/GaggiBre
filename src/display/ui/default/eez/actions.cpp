@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <display/main.h>
 #include <display/plugins/BLEScalePlugin.h>
+#include <display/ui/default/manual/ManualBrewScreen.h>
 
 void action_on_wakeup(lv_event_t *e) {
     if (controller.isUpdating() || controller.isErrorState() || controller.isAutotuning() ||
@@ -20,11 +21,17 @@ void action_on_load_started(lv_event_t *e) {
 };
 
 void action_on_menu_click(lv_event_t *e) {
+    if (controller.getMode() == MODE_MANUAL) {
+        ManualBrewScreen::restoreProfile();
+    }
     controller.deactivate();
     controller.getUI()->changeScreen(SCREEN_ID_MENU_SCREEN_NEW);
 };
 
 void action_on_brew_screen(lv_event_t *e) {
+    if (controller.getMode() == MODE_MANUAL) {
+        ManualBrewScreen::restoreProfile();
+    }
     controller.getUI()->changeScreen(SCREEN_ID_BREW_SCREEN);
     controller.deactivate();
     controller.setMode(MODE_BREW);
@@ -43,9 +50,25 @@ void action_on_water_screen(lv_event_t *e) {
 };
 
 void action_on_grind_screen(lv_event_t *e) {
-    controller.getUI()->changeScreen(SCREEN_ID_GRIND_SCREEN);
-    controller.setMode(MODE_GRIND);
+    const int secondaryAction = controller.getSettings().getSecondaryAction();
+    if (secondaryAction == SECONDARY_ACTION_NONE) {
+        return;
+    }
+
+    if (secondaryAction == SECONDARY_ACTION_GRIND) {
+        controller.getUI()->changeScreen(SCREEN_ID_GRIND_SCREEN);
+        controller.setMode(MODE_GRIND);
+        controller.deactivate();
+        return;
+    }
+
+    // Default GaggiBre secondary: Manual Brew
+    ManualBrewScreen::backupProfile();
+    controller.getUI()->changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
     controller.deactivate();
+    controller.setMode(MODE_MANUAL);
+    controller.setManualPressureTarget(0.0f);
+    controller.getUI()->markDirty();
 };
 
 void action_on_brew_start(lv_event_t *e) { controller.activate(); };

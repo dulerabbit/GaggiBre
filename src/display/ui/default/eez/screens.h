@@ -22,7 +22,9 @@ enum ScreensEnum {
     SCREEN_ID_GRIND_SCREEN = 9,
     SCREEN_ID_INFO_SCREEN = 10,
     SCREEN_ID_NEW_PROFILE_SCREEN = 11,
-    _SCREEN_ID_LAST = 11
+    // Hand-built Manual Brew (not in EEZ Studio project; DefaultUI loads it directly).
+    SCREEN_ID_MANUAL_BREW_SCREEN = 12,
+    _SCREEN_ID_LAST = 12
 };
 
 typedef struct _objects_t {

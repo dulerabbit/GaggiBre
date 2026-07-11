@@ -36,11 +36,17 @@
 #define MODE_STEAM 2
 #define MODE_WATER 3
 #define MODE_GRIND 4
+#define MODE_MANUAL 5
 
 // Alt Relay / SSR2 Function constants
 #define ALT_RELAY_NONE 0
 #define ALT_RELAY_GRIND 1
 #define ALT_RELAY_STEAM_BOILER 2
+
+// Secondary action (menu fourth icon) — Manual Brew or Grind
+#define SECONDARY_ACTION_NONE 0
+#define SECONDARY_ACTION_MANUAL_BREW 1
+#define SECONDARY_ACTION_GRIND 2
 
 #define WIFI_CONNECT_TIMEOUT_MS 30000
 #define DEFAULT_WIFI_AP_TIMEOUT_MS 600000

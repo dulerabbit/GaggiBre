@@ -70,10 +70,17 @@ Phase 2  Bring non-UI DNA (boards, drivers, Voice, flasher)  ✓
 Phase 3  LilyGo smoke: build + flash matched controller+display
 Phase 4a Waveshare MVP: letterbox 480 EEZ on 800×480          ✓ (this branch)
 Phase 4b Native EEZ 800×480 layouts (EEZ Studio / parallel tree)
-Phase 5  Wire Profile Settings / Manual Brew into EEZ
+Phase 5  Wire Profile Settings / Manual Brew into EEZ          ✓ Manual Brew MVP
 Phase 6  CI + flasher for ws43 on new stack
 Phase 7  Optional: WiFi coexistence / watchdogs / secure AP
 ```
+
+### Phase 5 notes (Manual Brew MVP)
+- `MODE_MANUAL` + NanoPb pressure pump control
+- Hand-built 480×480 Manual Brew screen (letterboxes on Waveshare)
+- Menu 4th slot via `secondaryAction` (Manual Brew / Grind / None)
+- Same behavior on LilyGo + Waveshare builds
+- Native 800×480 polish still Phase 4b
 
 ### Phase 1 — Scaffold (now)
 - Branch from `upstream/master`
