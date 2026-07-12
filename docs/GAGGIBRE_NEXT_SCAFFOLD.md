@@ -1,6 +1,7 @@
 # GaggiBre-next — base material (flash this)
 
-Branch: `cursor/gaggimate-next-scaffold-eb99`
+Current bring-up branch with Manual Brew: `cursor/manual-brew-eez-eb99`  
+(Scaffold base: `cursor/gaggimate-next-scaffold-eb99`)
 
 This is the **matched stack for a controller already on new Gaggimate firmware** (NanoPb protocol). Do not flash old SquareLine display firmware against that PCB.
 
@@ -8,17 +9,25 @@ This is the **matched stack for a controller already on new Gaggimate firmware**
 - Upstream Gaggimate: EEZ UI, NanoPb v3, LittleFS, modern controller protocol
 - Waveshare 4.3 / 4.3C drivers + `display-ws43` / `display-ws43c` envs
 - EEZ UI letterboxed on 800×480 (centered 480 UI + black side bars + touch remap)
+- Manual Brew (menu 4th icon) on LilyGo + Waveshare
 - **No Adaptive Brew mod** (removed)
 
 ## Flash Waveshare display (controller already new)
 
+Web UI is **embedded in the firmware app image** (not LittleFS). If you skip the web
+build, the AP page returns **Not found**. Always run `build_webui.sh` before
+`pio run` when you need the web UI.
+
 From this branch, on the PC with the display on COM11:
 
 ```bash
-git checkout cursor/gaggimate-next-scaffold-eb99
+git checkout cursor/manual-brew-eez-eb99
 git pull
+./scripts/build_webui.sh
 pio run -e display-ws43 -t upload --upload-port COM11
 ```
+
+Then open `http://4.4.4.1/` on the phone (after joining `GaggiMate` with the AP password from the Info QR / serial log).
 
 If you also need to re-flash the PCB from this same generation:
 
@@ -29,23 +38,23 @@ pio run -e controller -t upload --upload-port <PCB_PORT>
 ## What to expect
 - Round EEZ UI centered on the 4.3" panel
 - Black bars left/right
-- Brew / menu / profile / grind should work with the new controller
+- Brew / menu / profile / Manual Brew (or Grind) with the new controller
+- Web UI at `http://4.4.4.1/` when connected to the AP
 
 ## Blank screen after first scaffold flash?
-Fixed on this branch: letterbox side-bar paint used width as `x_end` for
+Fixed on scaffold: letterbox side-bar paint used width as `x_end` for
 `esp_lcd_panel_draw_bitmap`, which can hang RGB bring-up. Pull latest and
 re-flash `display-ws43`. Backlight is also forced on at panel init.
 
-## Not done yet (OK for first bring-up)
+## AP asks for a password?
+Upstream Gaggimate generates a WPA2 AP password on first boot (old GaggiBre was
+open). Read it from the Info-screen WiFi QR or serial. Captive portal still
+redirects to `http://4.4.4.1/` after you connect.
+
+## Not done yet
 - Native full-width 800×480 EEZ layouts
 - Voice on EEZ
-- WiFi polish
-
-## Manual Brew (this generation)
-Menu 4th icon → Manual Brew (default) or Grind (`secondaryAction` / web setting).
-Works on LilyGo and letterboxed Waveshare with the same behavior:
-- Swipe temp (left), tap pressure strip (right)
-- Start/stop, live chart, save shot as profile
+- Open-AP option / WiFi polish
 
 ## Rollback (old SquareLine daily driver)
 Only if you flash **both** display and controller back to the old generation:
