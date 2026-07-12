@@ -16,8 +16,9 @@ extern const lv_img_dsc_t img_manual_pressure_80x80;
 
 class Controller;
 
-// Hand-built 480×480 Manual Brew screen (works on LilyGo + letterboxed Waveshare).
-// Not part of the EEZ Studio project — loaded via DefaultUI when MODE_MANUAL is active.
+// Hand-built Manual Brew screen (not in EEZ Studio).
+// Matches WideLayout shell on 800×480: swipe left temp / right pressure + center graph.
+// On 480×480 boards keeps the compact square layout.
 namespace ManualBrewScreen {
 
 void init(Controller *controller);
