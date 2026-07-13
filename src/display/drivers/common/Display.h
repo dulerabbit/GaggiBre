@@ -15,6 +15,9 @@ class Display {
     // Wide RGB panels (e.g. Waveshare 800×480) may prefer a different refresh
     // strategy; default keeps upstream LilyGo/Amoled behavior.
     virtual bool prefersFullRefresh() { return false; }
+    // RGB panels with a live framebuffer can align each LVGL refresh batch to
+    // a frame boundary. Other display types require no synchronization.
+    virtual void waitForFrameBoundary() {}
 
   protected:
     uint8_t _rotation;

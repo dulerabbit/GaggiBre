@@ -122,7 +122,7 @@ export function Scales() {
                 <div>
                   <h3 className='text-base-content text-lg font-medium'>System in Standby</h3>
                   <p className='text-base-content/70'>
-                    Please put GaggiMate in Brew or Grind mode to use Bluetooth scales.
+                    Please put GaggiBre in Brew or Grind mode to use Bluetooth scales.
                   </p>
                 </div>
               </div>

@@ -19,7 +19,7 @@
 #define DEFAULT_PID "58.397,1.027,249.055,0.0"
 #define DEFAULT_PUMP_MODEL_COEFFS "10.205,5.521"
 #define DEFAULT_PUMP_SLIP_COEFFS "0,0,0,0"
-#define DEFAULT_MDNS_NAME "gaggimate"
+#define DEFAULT_MDNS_NAME "gaggibre"
 #define DEFAULT_OTA_CHANNEL "latest"
 #define DEFAULT_TIMEZONE "Europe/Rome"
 #define DEFAULT_HOME_ASSISTANT_TOPIC "homeassistant"

@@ -31,6 +31,7 @@ class Controller {
     void setMode(int newMode);
     void setTargetTemp(float temperature);
     void setManualPressureTarget(float pressure);
+    void setManualFlowTarget(float flow);
     void setPressureScale();
     void setPumpModelCoeffs();
     void setPidSettings();

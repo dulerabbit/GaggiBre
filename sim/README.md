@@ -19,6 +19,30 @@ brew install sdl2          # the windowing/graphics backend
 
 Linux (Debian/Ubuntu): `sudo apt install build-essential libsdl2-dev`.
 
+Windows (SDL2 is required; `sdl2-config` is often missing outside MSYS2):
+
+1. **vcpkg** (recommended for MSVC / native PlatformIO on Windows):
+
+   ```shell
+   vcpkg install sdl2:x64-windows
+   setx SDL2DIR "%VCPKG_ROOT%\installed\x64-windows"
+   ```
+
+   Or set `SDL2DIR` to the folder that contains `include/SDL2` and `lib/`.
+
+2. **MSYS2** (provides `sdl2-config` on PATH if you build from that shell):
+
+   ```shell
+   pacman -S mingw-w64-ucrt-x86_64-SDL2
+   # Use the UCRT64/MINGW64 environment so sdl2-config is available.
+   ```
+
+`platformio.ini` calls `scripts/sim_sdl2_flags.py`, which prefers `sdl2-config` and
+falls back to `SDL2DIR` / common vcpkg + MSYS2 roots on Windows. macOS and Linux
+continue to use Homebrew / apt SDL2 via `sdl2-config`.
+
+Waveshare experimental sim: `pio run -e display-sim-ws43` (800×480, eez43).
+
 If you want the **WebUI**, build its embedded bundle once (needs Node 22 — `nvm use`):
 
 ```shell

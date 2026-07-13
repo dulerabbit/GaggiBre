@@ -18,7 +18,7 @@ void ImprovPlugin::setup(Controller *_controller, PluginManager *pluginManager) 
     deviceUrl = "http://" + settings.getMdnsName() + ".local/";
 
     improv = new ImprovWiFi(&Serial);
-    improv->setDeviceInfo(currentChipFamily(), "GaggiMate", firmwareVersion.c_str(), deviceName.c_str(), deviceUrl.c_str());
+    improv->setDeviceInfo(currentChipFamily(), "GaggiBre", firmwareVersion.c_str(), deviceName.c_str(), deviceUrl.c_str());
     improv->setCustomConnectWiFi(onConnectWifi);
     improv->onImprovConnected(onConnected);
 }

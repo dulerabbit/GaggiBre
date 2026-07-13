@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
     // the clock and Wi-Fi icon (and avoids captive-portal AP mode). Seed only once.
     Settings &settings = controller.getSettings();
     if (settings.getWifiSsid().isEmpty())
-        settings.setWifiSsid("GaggiMate-Sim");
+        settings.setWifiSsid("GaggiBre-Sim");
     if (settings.getWifiPassword().isEmpty())
         settings.setWifiPassword("simulator");
 

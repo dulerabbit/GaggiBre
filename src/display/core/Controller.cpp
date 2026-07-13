@@ -732,6 +732,20 @@ void Controller::setManualPressureTarget(float pressure) {
     updateLastAction();
 }
 
+void Controller::setManualFlowTarget(float flow) {
+    const float clamped = constrain(flow, 0.0f, 12.0f);
+    Profile &profile = profileManager->getSelectedProfile();
+    for (auto &phase : profile.phases) {
+        if (phase.phase == PhaseType::PHASE_TYPE_BREW) {
+            phase.pumpIsSimple = false;
+            phase.pumpAdvanced.target = PumpTarget::PUMP_TARGET_FLOW;
+            phase.pumpAdvanced.flow = clamped;
+        }
+    }
+    targetFlow = clamped;
+    updateLastAction();
+}
+
 void Controller::setPressureScale(void) {
     if (systemInfo.capabilities.pressure) {
         comms.sendPressureScale(settings.getPressureScaling());

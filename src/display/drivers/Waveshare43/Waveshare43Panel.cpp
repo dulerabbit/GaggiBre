@@ -207,12 +207,18 @@ void Waveshare43Panel::initBUS() {
 uint16_t Waveshare43Panel::width() { return WS43_BOARD_TFT_WIDTH; }
 uint16_t Waveshare43Panel::height() { return WS43_BOARD_TFT_HEIGHT; }
 
+void Waveshare43Panel::waitForFrameBoundary() {
+    if (!_frameDoneSem) {
+        return;
+    }
+    // Align a complete LVGL dirty-region batch with frame completion. A
+    // bounded wait avoids deadlocking display startup if the callback is late.
+    xSemaphoreTake(_frameDoneSem, pdMS_TO_TICKS(50));
+}
+
 void Waveshare43Panel::pushColors(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t *data) {
     assert(_panelDrv);
-    // No per-flush semaphore wait: with partial LVGL draw buffers there are
-    // multiple flushes per frame; blocking each one for vsync would stall the
-    // render loop.  PSRAM bandwidth contention (the root cause of HSYNC slip)
-    // is addressed by keeping the LVGL draw buffers in internal SRAM instead.
+    // LV_Helper gates once per LVGL refresh batch, not once per partial strip.
     esp_lcd_panel_draw_bitmap(_panelDrv, x, y, w, h, data);
 }
 

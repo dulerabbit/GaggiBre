@@ -176,7 +176,7 @@ function StopCalculationHelpPopover() {
           <p className='opacity-85'>
             The <strong>Stop Calculation</strong> settings and{' '}
             <strong style={{ color: utilityColors.predictionInfoBlue }}>Calc</strong> values are
-            Analyzer-only tools. Future-value calculations are not performed by GaggiMate itself and
+            Analyzer-only tools. Future-value calculations are not performed by GaggiBre itself and
             shot execution is not changed by these settings.
           </p>
 
@@ -207,7 +207,7 @@ function StopCalculationHelpPopover() {
                 </span>
                 Shown when a weight-based stop was likely triggered, but the detected timing is
                 significantly too early or too late. This may indicate an incorrectly configured
-                scale delay in the GaggiMate settings (or a shot that was manually stopped near the
+                scale delay in the GaggiBre settings (or a shot that was manually stopped near the
                 target).
               </p>
               <p>

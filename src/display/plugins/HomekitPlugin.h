@@ -4,7 +4,7 @@
 #include "HomeSpan.h"
 
 #define HOMESPAN_PORT 8080
-#define DEVICE_NAME "GaggiMate"
+#define DEVICE_NAME "GaggiBre"
 
 typedef std::function<void()> change_callback_t;
 class HomekitAccessory : public Service::Thermostat {

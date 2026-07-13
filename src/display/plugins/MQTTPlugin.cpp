@@ -11,7 +11,7 @@ bool MQTTPlugin::connect(Controller *controller) {
     const Settings settings = controller->getSettings();
     const String ip = settings.getHomeAssistantIP();
     const int haPort = settings.getHomeAssistantPort();
-    const String clientId = "GaggiMate";
+    const String clientId = "GaggiBre";
     const String haUser = settings.getHomeAssistantUser();
     const String haPassword = settings.getHomeAssistantPassword();
 
@@ -45,15 +45,15 @@ void MQTTPlugin::publishDiscovery(Controller *controller) {
 
     // Device information
     device["ids"] = cmac;
-    device["name"] = "GaggiMate";
-    device["mf"] = "GaggiMate";
-    device["mdl"] = "GaggiMate";
+    device["name"] = "GaggiBre";
+    device["mf"] = "GaggiBre";
+    device["mdl"] = "GaggiBre";
     device["sn"] = cmac;
     device["sw"] = controller->getSystemInfo().version;
     device["hw"] = controller->getSystemInfo().hardware;
 
     // Origin information
-    origin["name"] = "GaggiMate";
+    origin["name"] = "GaggiBre";
     origin["sw"] = controller->getSystemInfo().version;
     origin["url"] = "https://gaggimate.eu/";
 

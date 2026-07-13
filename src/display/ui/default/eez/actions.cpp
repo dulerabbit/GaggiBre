@@ -64,11 +64,10 @@ void action_on_grind_screen(lv_event_t *e) {
 
     // Default GaggiBre secondary: Manual Brew
     ManualBrewScreen::backupProfile();
-    controller.getUI()->changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
     controller.deactivate();
     controller.setMode(MODE_MANUAL);
     controller.setManualPressureTarget(0.0f);
-    controller.getUI()->markDirty();
+    controller.getUI()->showManualBrew();
 };
 
 void action_on_brew_start(lv_event_t *e) { controller.activate(); };

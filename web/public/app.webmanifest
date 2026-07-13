@@ -5,8 +5,8 @@
   "display": "fullscreen",
   "dir": "auto",
   "lang": "en-US",
-  "name": "GaggiMate Web UI",
-  "short_name": "GaggiMate",
+  "name": "GaggiBre Web UI",
+  "short_name": "GaggiBre",
   "start_url": "/",
   "scope": "/"
 }

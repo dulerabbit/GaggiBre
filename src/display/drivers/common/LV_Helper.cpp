@@ -6,9 +6,9 @@
  * Ltd
  * @date      2024-01-22
  *
- * GaggiBre: LVGL uses the physical panel resolution. On Waveshare 800×480 the
- * EEZ screens are adapted at runtime (WideLayout) to rectangular left/right
- * readouts. Round boards stay on the authored 480×480 EEZ layout.
+ * GaggiBre: LVGL uses the physical panel resolution. Waveshare 800×480 uses
+ * the native generated eez43 tree; round boards retain the authored 480×480
+ * upstream EEZ tree.
  */
 #include "LV_Helper.h"
 #include <cstring>
@@ -23,16 +23,21 @@ static lv_indev_drv_t indev_drv;
 static lv_color_t *buf = NULL;
 static lv_color_t *buf1 = NULL;
 static Display *s_board = nullptr;
+static bool s_firstFlushInBatch = true;
 
 /* Display flushing */
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p) {
     auto *board = static_cast<Display *>(disp_drv->user_data);
+    if (s_firstFlushInBatch) {
+        board->waitForFrameBoundary();
+    }
     const int16_t x1 = area->x1;
     const int16_t y1 = area->y1;
     const int16_t x2 = area->x2 + 1;
     const int16_t y2 = area->y2 + 1;
     board->pushColors(static_cast<uint16_t>(x1), static_cast<uint16_t>(y1), static_cast<uint16_t>(x2),
                       static_cast<uint16_t>(y2), reinterpret_cast<uint16_t *>(color_p));
+    s_firstFlushInBatch = lv_disp_flush_is_last(disp_drv);
     lv_disp_flush_ready(disp_drv);
 }
 

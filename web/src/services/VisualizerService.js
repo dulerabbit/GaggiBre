@@ -69,7 +69,7 @@ export class VisualizerService {
       timestamp,
       profile: profileData
         ? {
-            label: profileData.label || shotData.profile || 'GaggiMate Shot',
+            label: profileData.label || shotData.profile || 'GaggiBre Shot',
             id: profileData.id,
             type: profileData.type,
             description: profileData.description,
@@ -77,7 +77,7 @@ export class VisualizerService {
             phases: profileData.phases || [],
           }
         : {
-            label: shotData.profile || 'GaggiMate Shot',
+            label: shotData.profile || 'GaggiBre Shot',
           },
       samples,
     };
@@ -86,13 +86,13 @@ export class VisualizerService {
     // Based on the GitHub source, these should be added to the root level for the parser to extract
     shotFile.bean_weight = parseNumeric(notes.doseIn); // Input dose (grams)
     shotFile.drink_weight = parseNumeric(notes.doseOut); // Output weight (grams)
-    shotFile.grinder_model = 'GaggiMate'; // Fixed grinder model
+    shotFile.grinder_model = 'GaggiBre'; // Fixed grinder model
     shotFile.grinder_setting = notes.grindSetting || ''; // Grind setting from notes
     shotFile.espresso_enjoyment = enjoyment; // Convert 0-5 stars to 0-100 scale
     shotFile.espresso_notes = notes.notes || ''; // Free-form tasting notes
     shotFile.bean_brand = 'Unknown roaster'; // Default since we don't track this in notes
     shotFile.bean_type = notes.beanType; // Default since we don't track this in notes
-    shotFile.barista = 'GaggiMate User'; // Default barista name
+    shotFile.barista = 'GaggiBre User'; // Default barista name
     shotFile.roast_level = ''; // Not tracked in current notes schema
     shotFile.roast_date = ''; // Not tracked in current notes schema
 
@@ -121,7 +121,7 @@ export class VisualizerService {
       'Content-Type': 'application/json',
       Authorization: `Basic ${credentials}`,
       Accept: 'application/json',
-      'User-Agent': 'GaggiMate-WebUI/1.0',
+      'User-Agent': 'GaggiBre-WebUI/1.0',
     };
 
     try {

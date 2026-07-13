@@ -56,9 +56,9 @@ export function EmptyState({ loading }) {
 
             <div className='flex-1'>
               {/* REMOVED HOVER EFFECT */}
-              <h3 className='text-base-content mb-1 text-sm font-bold'>GaggiMate (GM)</h3>
+              <h3 className='text-base-content mb-1 text-sm font-bold'>GaggiBre (device)</h3>
               <p className='text-base-content text-xs leading-relaxed'>
-                Your saved shots and profiles directly from the GaggiMate internal storage.
+                Your saved shots and profiles directly from the GaggiBre internal storage.
               </p>
             </div>
           </div>

@@ -7,14 +7,21 @@
 
 SdlDriver *SdlDriver::instance = nullptr;
 
-// The LilyGo T-RGB panel the default UI targets is 480x480.
+#if defined(GAGGIMATE_SIM_WS43)
+static constexpr int DISP_W = 800;
+static constexpr int DISP_H = 480;
+static constexpr bool ROUND_PANEL = false;
+#else
+// The LilyGo T-RGB panel the default simulator targets is 480x480.
 static constexpr int DISP_W = 480;
 static constexpr int DISP_H = 480;
+static constexpr bool ROUND_PANEL = true;
+#endif
 
 static SDL_Window *s_window = nullptr;
 static SDL_Renderer *s_renderer = nullptr;
 static SDL_Texture *s_texture = nullptr;
-static SDL_Texture *s_mask = nullptr; // opaque outside the 480px circle, transparent inside
+static SDL_Texture *s_mask = nullptr; // round simulator only: opaque outside the panel circle
 
 // "Bezel" colour shown outside the round panel (corners of the square window).
 static constexpr Uint8 BEZEL_R = 0x28, BEZEL_G = 0x28, BEZEL_B = 0x28;
@@ -46,16 +53,15 @@ void SdlDriver::init() {
         exit(1);
     }
     s_window =
-        SDL_CreateWindow("GaggiMate Simulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DISP_W, DISP_H, SDL_WINDOW_SHOWN);
+        SDL_CreateWindow("GaggiBre Simulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DISP_W, DISP_H, SDL_WINDOW_SHOWN);
     s_renderer = SDL_CreateRenderer(s_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     s_texture = SDL_CreateTexture(s_renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, DISP_W, DISP_H);
 
-    // Build the round-display mask: the device panel is a 480px circle, so paint
-    // everything outside that circle with the bezel colour and leave the inside
-    // transparent. Overlaid on every frame so the square framebuffer reads as round.
-    s_mask = SDL_CreateTexture(s_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, DISP_W, DISP_H);
-    SDL_SetTextureBlendMode(s_mask, SDL_BLENDMODE_BLEND);
-    {
+    // The original simulator models a round 480px panel. The Waveshare target is
+    // rectangular, so it must render the complete 800x480 framebuffer.
+    if (ROUND_PANEL) {
+        s_mask = SDL_CreateTexture(s_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, DISP_W, DISP_H);
+        SDL_SetTextureBlendMode(s_mask, SDL_BLENDMODE_BLEND);
         std::vector<uint32_t> px(DISP_W * DISP_H);
         const double cx = DISP_W / 2.0, cy = DISP_H / 2.0, r = DISP_W / 2.0;
         const uint32_t bezel = 0xFF000000u | (BEZEL_R << 16) | (BEZEL_G << 8) | BEZEL_B;
@@ -116,7 +122,8 @@ void SdlDriver::pumpAndRender() {
     SDL_SetRenderDrawColor(s_renderer, BEZEL_R, BEZEL_G, BEZEL_B, 0xFF);
     SDL_RenderClear(s_renderer);
     SDL_RenderCopy(s_renderer, s_texture, nullptr, nullptr);
-    SDL_RenderCopy(s_renderer, s_mask, nullptr, nullptr); // round off the corners
+    if (s_mask)
+        SDL_RenderCopy(s_renderer, s_mask, nullptr, nullptr); // round off the 480x480 panel
     SDL_RenderPresent(s_renderer);
 }
 
@@ -126,7 +133,8 @@ void SdlDriver::screenshot(const char *path) {
     SDL_SetRenderDrawColor(s_renderer, BEZEL_R, BEZEL_G, BEZEL_B, 0xFF);
     SDL_RenderClear(s_renderer);
     SDL_RenderCopy(s_renderer, s_texture, nullptr, nullptr);
-    SDL_RenderCopy(s_renderer, s_mask, nullptr, nullptr); // round off the corners
+    if (s_mask)
+        SDL_RenderCopy(s_renderer, s_mask, nullptr, nullptr);
     SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0, DISP_W, DISP_H, 16, SDL_PIXELFORMAT_RGB565);
     if (surface) {
         SDL_RenderReadPixels(s_renderer, nullptr, SDL_PIXELFORMAT_RGB565, surface->pixels, surface->pitch);

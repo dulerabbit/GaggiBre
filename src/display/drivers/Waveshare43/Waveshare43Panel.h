@@ -28,6 +28,7 @@ class Waveshare43Panel : public Display {
     uint16_t width() override;
     uint16_t height() override;
     void pushColors(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t *data) override;
+    void waitForFrameBoundary() override;
     bool supportsDirectMode() override { return false; }
 
     // Keep LVGL in partial-refresh mode.  The installed Arduino-ESP32 RGB API

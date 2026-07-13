@@ -462,7 +462,7 @@ export function Settings() {
             <SettingsFormField
               label='Access Point Password'
               htmlFor='apPassword'
-              helpText='Used for the GaggiMate hotspot when no Wi-Fi is configured (min. 8 characters).'
+              helpText='Used for the GaggiBre hotspot when no Wi-Fi is configured (min. 8 characters).'
             >
               <label className='input w-full'>
                 <input

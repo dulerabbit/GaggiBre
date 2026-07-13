@@ -6,8 +6,7 @@
 #include <display/core/constants.h>
 #include <display/drivers/Driver.h>
 #include <display/models/profile.h>
-#include <display/ui/default/eez/screens.h>
-#include <display/ui/default/eez/structs.h>
+#include <display/ui/default/GeneratedUI.h>
 
 class Controller;
 
@@ -45,6 +44,7 @@ class DefaultUI {
     };
 
     void onVolumetricDelete();
+    void showManualBrew();
 
     void markDirty() { rerender = true; }
     void markProfileDirty() { profileDirty = true; }

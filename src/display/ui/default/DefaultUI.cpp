@@ -1,6 +1,7 @@
 #include "DefaultUI.h"
 
 #include <WiFi.h>
+#include <display/config.h>
 #include <display/core/Controller.h>
 #include <display/core/process/BrewProcess.h>
 #include <display/core/process/Process.h>
@@ -17,9 +18,14 @@
 
 #include "esp_sntp.h"
 
-#include <display/ui/default/eez/ui.h>
+#if GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+#include <display/ui/default/NativeManualBrew.h>
+#include <display/ui/default/shared/SecondaryActionIcons.h>
+#else
 #include <display/ui/default/manual/ManualBrewScreen.h>
+#include <display/ui/default/shared/SecondaryActionIcons.h>
 #include <display/ui/default/wide/WideLayout.h>
+#endif
 
 static EffectManager effect_mgr;
 
@@ -34,11 +40,13 @@ static bool isShortTickScreen(ScreensEnum s) {
     return s == SCREEN_ID_PROFILE_SCREEN || s == SCREEN_ID_MENU_SCREEN_NEW || s == SCREEN_ID_INFO_SCREEN;
 }
 
-// Wide rectangular dials: short/dot on standby + menu-class; long on brew-class.
+#if !GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+// Legacy wide adapter: short/dot on standby + menu-class; long on brew-class.
 static bool isWideShortTickScreen(ScreensEnum s) {
     return s == SCREEN_ID_STANDBY_SCREEN || s == SCREEN_ID_MENU_SCREEN || s == SCREEN_ID_MENU_SCREEN_NEW ||
            s == SCREEN_ID_PROFILE_SCREEN || s == SCREEN_ID_INFO_SCREEN || s == SCREEN_ID_NEW_PROFILE_SCREEN;
 }
+#endif
 
 // Format a millisecond duration as "m:ss" for the brew/profile time labels.
 static void formatDuration(unsigned long ms, char *buf, size_t len) {
@@ -143,7 +151,7 @@ void DefaultUI::init() {
             changeScreen(SCREEN_ID_BREW_SCREEN);
             break;
         case MODE_MANUAL:
-            changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
+            showManualBrew();
             break;
         case MODE_GRIND:
             changeScreen(SCREEN_ID_GRIND_SCREEN);
@@ -161,19 +169,46 @@ void DefaultUI::init() {
     pluginManager->on("controller:brew:start", [this](Event const &event) {
         // Manual Brew stays on its own screen (live pressure control + chart).
         if (controller->getMode() == MODE_MANUAL) {
-            changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
+            showManualBrew();
+            return;
+        }
+#if GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+        // The native wide Brew screen owns its generated play/pause toggle and remains loaded.
+        if (targetScreen != SCREEN_ID_BREW_SCREEN && currentScreen != SCREEN_ID_BREW_SCREEN) {
+            changeScreen(SCREEN_ID_BREW_SCREEN);
+        }
+        return;
+#else
+        if (WideLayout::isActive()) {
+            if (targetScreen != SCREEN_ID_BREW_SCREEN && currentScreen != SCREEN_ID_BREW_SCREEN) {
+                changeScreen(SCREEN_ID_BREW_SCREEN);
+            }
             return;
         }
         changeScreen(SCREEN_ID_STATUS_SCREEN);
+#endif
     });
     pluginManager->on("controller:brew:clear", [this](Event const &event) {
         if (controller->getMode() == MODE_MANUAL) {
-            changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
+            showManualBrew();
+            return;
+        }
+#if GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+        if (targetScreen != SCREEN_ID_BREW_SCREEN && currentScreen != SCREEN_ID_BREW_SCREEN) {
+            changeScreen(SCREEN_ID_BREW_SCREEN);
+        }
+        return;
+#else
+        if (WideLayout::isActive()) {
+            if (targetScreen != SCREEN_ID_BREW_SCREEN && currentScreen != SCREEN_ID_BREW_SCREEN) {
+                changeScreen(SCREEN_ID_BREW_SCREEN);
+            }
             return;
         }
         if (eez_flow_get_current_screen() == SCREEN_ID_STATUS_SCREEN) {
             changeScreen(SCREEN_ID_BREW_SCREEN);
         }
+#endif
     });
     pluginManager->on("controller:bluetooth:waiting", [this](Event const &) {
         waitingForController = true;
@@ -285,12 +320,21 @@ void DefaultUI::loop() {
         eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_GRIND_WEIGHT_TARGET, grindWeightTarget);
 
         handleScreenChange();
+#if GAGGIMATE_HAS_NATIVE_MANUAL_BREW
         if (targetScreen == SCREEN_ID_MANUAL_BREW_SCREEN) {
+            currentScreen = SCREEN_ID_MANUAL_BREW_SCREEN;
+            NativeManualBrew::update();
+        } else {
+            currentScreen = static_cast<ScreensEnum>(eez_flow_get_current_screen());
+        }
+#else
+        if (ManualBrewScreen::isActive() || targetScreen == SCREEN_ID_MANUAL_BREW_SCREEN) {
             currentScreen = SCREEN_ID_MANUAL_BREW_SCREEN;
             ManualBrewScreen::update();
         } else {
             currentScreen = static_cast<ScreensEnum>(eez_flow_get_current_screen());
         }
+#endif
         effect_mgr.evaluate_all();
 
         if (currentScreen == SCREEN_ID_STANDBY_SCREEN) {
@@ -330,6 +374,12 @@ void DefaultUI::loopProfiles() {
 }
 
 void DefaultUI::changeScreen(ScreensEnum screen) {
+#if !GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+    // Procedural Manual Brew is outside EEZ navigation; hide it when leaving.
+    if (screen != SCREEN_ID_MANUAL_BREW_SCREEN && ManualBrewScreen::isActive()) {
+        ManualBrewScreen::hide();
+    }
+#endif
     targetScreen = screen;
     brewScreenState = BrewScreenState::Brew;
     rerender = true;
@@ -371,10 +421,20 @@ void DefaultUI::onVolumetricDelete() {
     profileDirty = true;
 }
 
+void DefaultUI::showManualBrew() {
+    // Both native and legacy paths use the Manual Brew screen ID; legacy maps it
+    // to the procedural ManualBrewScreen overlay in handleScreenChange().
+    changeScreen(SCREEN_ID_MANUAL_BREW_SCREEN);
+}
+
 void DefaultUI::setupPanel() {
     ui_init();
-    WideLayout::apply();
+#if !GAGGIMATE_HAS_NATIVE_MANUAL_BREW
     ManualBrewScreen::init(controller);
+    WideLayout::apply();
+#else
+    NativeManualBrew::init(controller);
+#endif
     setupState();
     applyTheme();
     ui_tick();
@@ -430,9 +490,9 @@ void DefaultUI::setupState() {
                                       escaped += c;
                                   }
                                   if (escaped.isEmpty()) {
-                                      content = "WIFI:S:GaggiMate;;;;";
+                                      content = String("WIFI:S:") + WIFI_AP_SSID + ";;;;";
                                   } else {
-                                      content = "WIFI:S:GaggiMate;T:WPA;P:" + escaped + ";;";
+                                      content = String("WIFI:S:") + WIFI_AP_SSID + ";T:WPA;P:" + escaped + ";;";
                                   }
                               } else if (wifiConnected) {
                                   content = "http://" + WiFi.localIP().toString() + "/";
@@ -444,6 +504,14 @@ void DefaultUI::setupState() {
                               lv_qrcode_update(objects.qrcode, data, strlen(data));
                           },
                           &wifiConnected, &apActive);
+#if GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+    effect_mgr.use_effect([this]() { return currentScreen == SCREEN_ID_MENU_SCREEN_NEW; },
+                          [this]() {
+                              SecondaryActionIcons::applyMenuGrindButton(objects.btn_grind_1,
+                                                                         controller->getSettings().getSecondaryAction());
+                          },
+                          &grindAvailable);
+#else
     effect_mgr.use_effect([this]() { return currentScreen == SCREEN_ID_MENU_SCREEN_NEW; },
                           [this]() {
                               if (WideLayout::isActive()) {
@@ -464,9 +532,11 @@ void DefaultUI::setupState() {
                                   positionMenuIcon(objects.btn_water_1, step * 2 - rotationOffset, radius);
                                   positionMenuIcon(objects.btn_grind_1, step * 3 - rotationOffset, radius);
                               }
-                              ManualBrewScreen::onMenuIconApply(objects.btn_grind_1);
+                              SecondaryActionIcons::applyMenuGrindButton(objects.btn_grind_1,
+                                                                         controller->getSettings().getSecondaryAction());
                           },
                           &grindAvailable);
+#endif
 }
 
 void DefaultUI::handleScreenChange() {
@@ -478,16 +548,25 @@ void DefaultUI::handleScreenChange() {
             setBrightness(settings.getMainBrightness());
         }
 
+#if GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+        // Native WS43 geometry and controls are entirely authored in the generated EEZ tree.
         if (currentScreen == SCREEN_ID_MANUAL_BREW_SCREEN && targetScreen != SCREEN_ID_MANUAL_BREW_SCREEN) {
-            ManualBrewScreen::hide();
+            NativeManualBrew::onExit();
         }
-
+        eez_flow_set_screen(targetScreen, LV_SCR_LOAD_ANIM_NONE, 0, 0);
+#else
         if (targetScreen == SCREEN_ID_MANUAL_BREW_SCREEN) {
+            // Hand-built Manual Brew is not an EEZ screen — load it directly.
             ManualBrewScreen::show();
+            currentScreen = SCREEN_ID_MANUAL_BREW_SCREEN;
         } else {
+            if (ManualBrewScreen::isActive()) {
+                ManualBrewScreen::hide();
+            }
             eez_flow_set_screen(targetScreen, LV_SCR_LOAD_ANIM_NONE, 0, 0);
             animateGaugeTicks(currentScreen, targetScreen);
         }
+#endif
         rerender = true;
     }
 }
@@ -518,6 +597,7 @@ void DefaultUI::setGaugeTickLength(int32_t len) {
 void DefaultUI::gaugeTickAnimCb(void *var, int32_t v) { static_cast<DefaultUI *>(var)->setGaugeTickLength(v); }
 
 void DefaultUI::animateGaugeTicks(ScreensEnum from, ScreensEnum to) {
+#if !GAGGIMATE_HAS_NATIVE_MANUAL_BREW
     // Wide rectangular dials: short↔long morph on vertical tick columns (~2× long).
     if (WideLayout::isActive()) {
         const int32_t fromLen = isWideShortTickScreen(from) ? WideLayout::kTickShort : WideLayout::kTickLong;
@@ -525,6 +605,7 @@ void DefaultUI::animateGaugeTicks(ScreensEnum from, ScreensEnum to) {
         WideLayout::animateTickLength(fromLen, toLen, GAUGE_TICK_ANIM_MS);
         return;
     }
+#endif
 
     const int32_t fromLen = isShortTickScreen(from) ? GAUGE_TICK_SHORT : GAUGE_TICK_LONG;
     const int32_t toLen = isShortTickScreen(to) ? GAUGE_TICK_SHORT : GAUGE_TICK_LONG;
@@ -601,7 +682,7 @@ void DefaultUI::updateSystemStatus() {
     systemStatus.grind_available(grindAvailable);
     systemStatus.mode(mode);
     systemStatus.ip(apActive ? "4.4.4.1" : WiFi.localIP().toString().c_str());
-    systemStatus.network(apActive ? "GaggiMate" : systemStatus.wifi() ? settings.getWifiSsid().c_str() : "Disconnected");
+    systemStatus.network(apActive ? WIFI_AP_SSID : systemStatus.wifi() ? settings.getWifiSsid().c_str() : "Disconnected");
     systemStatus.ap_active(apActive);
 
     char timeBuf[12] = "";
@@ -656,7 +737,12 @@ void DefaultUI::updateBoiler() {
     const float maxPressure = settings.getPressureScaling() > 0.0f ? settings.getPressureScaling() : 12.0f;
     const float tempFrac = maxTemp > 0.0f ? static_cast<float>(controller->getCurrentTemp()) / maxTemp : 0.0f;
     const float pressFrac = maxPressure > 0.0f ? pressure / maxPressure : 0.0f;
+#if !GAGGIMATE_HAS_NATIVE_MANUAL_BREW
     WideLayout::update(tempFrac, pressFrac);
+#else
+    (void)tempFrac;
+    (void)pressFrac;
+#endif
 }
 
 // Mirror the live BrewProcess into brew_process_info; every field must stay valid/typed or the StatusScreen flow aborts.
@@ -695,6 +781,12 @@ void DefaultUI::updateBrewProcess() {
         brewProcess.elapsed_time("0:00");
         brewProcess.elapsed_percentage(0.0f);
         brewProcess.is_complete(false);
+#if !GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+        if (WideLayout::isActive() && objects.current_duration &&
+            strcmp(lv_label_get_text(objects.current_duration), "0:00") != 0) {
+            lv_label_set_text(objects.current_duration, "0:00");
+        }
+#endif
         return;
     }
 
@@ -735,6 +827,13 @@ void DefaultUI::updateBrewProcess() {
     const unsigned long elapsedMs = (bp->processStarted > 0 && now >= bp->processStarted) ? now - bp->processStarted : 0;
     formatDuration(elapsedMs, buf, sizeof(buf));
     brewProcess.elapsed_time(buf);
+#if !GAGGIMATE_HAS_NATIVE_MANUAL_BREW
+    // The legacy wide adapter keeps duration on brew_screen (status tick does not run).
+    if (WideLayout::isActive() && objects.current_duration && controller->getMode() == MODE_BREW &&
+        controller->isActive() && strcmp(lv_label_get_text(objects.current_duration), buf) != 0) {
+        lv_label_set_text(objects.current_duration, buf);
+    }
+#endif
 
     const bool weightTarget = bp->target == ProcessTarget::VOLUMETRIC && phase.hasVolumetricTarget();
     brewProcess.phase_value_is_weight(weightTarget);
