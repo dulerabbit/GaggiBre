@@ -149,4 +149,40 @@ Only after Waveshare EEZ works. Coexistence, STA/network watchdogs, icon gating,
 | UI stability backup | `db3c129` |
 | Upstream `master` (scaffold base) | `0663391` |
 
-Remotes: `origin` = GaggiBre, `upstream` = `jniebuhr/gaggimate`
+---
+
+## 7. Remotes & upstream sync (2026-07-12)
+
+GaggiBre was originally a **file-copy upload** (`fork: false`). It is now a **real GitHub fork** of [jniebuhr/gaggimate](https://github.com/jniebuhr/gaggimate).
+
+| Remote | URL | Purpose |
+|--------|-----|---------|
+| `origin` | `https://github.com/dulerabbit/GaggiBre.git` | Daily push target — **real fork** (`Forked from jniebuhr/gaggimate`) |
+| `upstream` | `https://github.com/jniebuhr/gaggimate.git` | Fetch/rebase source of truth |
+| `legacy` | `https://github.com/dulerabbit/GaggiBre-legacy.git` | Archived copy-upload (stars/issues/old SquareLine history) |
+
+### Stay up to date (do not re-copy files)
+
+```bash
+git fetch upstream
+git checkout cursor/manual-brew-eez-eb99   # or your feature branch
+git rebase upstream/master                # or: git merge upstream/master
+# resolve conflicts, build, flash matched controller+display
+git push --force-with-lease origin HEAD   # only if you rebased
+```
+
+### Contribute back to Gaggimate
+
+1. Sign the CLA via [@jniebuhr](https://github.com/jniebuhr) (mdwasp) — see `CONTRIBUTING.md`.
+2. Branch from current `upstream/master`.
+3. Open a **focused** PR from this fork to `jniebuhr/gaggimate` (one concern per PR).
+4. Do **not** zip/copy upstream trees into this repo.
+
+### Local remotes quick check
+
+```bash
+git remote -v
+# origin    -> dulerabbit/GaggiBre
+# upstream  -> jniebuhr/gaggimate
+# legacy    -> dulerabbit/GaggiBre-legacy
+```
