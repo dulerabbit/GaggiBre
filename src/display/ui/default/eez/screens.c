@@ -1079,10 +1079,10 @@ void create_screen_standby_screen() {
             lv_obj_set_pos(obj, 0, 0);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_img_set_src(obj, &img_logo);
-            lv_img_set_zoom(obj, 210);
-            lv_obj_set_style_img_recolor(obj, lv_color_hex(theme_colors[eez_flow_get_selected_theme_index()][0]),
-                                         LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_img_recolor_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+            // 1:1 — quality baked into asset (do not LVGL-zoom or it softens).
+            lv_img_set_zoom(obj, 256);
+            // Keep original GaggiBre colors (do not theme-recolor the graffiti mark).
+            lv_obj_set_style_img_recolor_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
         {
@@ -6461,9 +6461,10 @@ void change_color_theme(uint32_t theme_index) {
         if (objects.standby_screen)
             lv_obj_set_style_bg_color(objects.standby_screen, lv_color_hex(theme_colors[theme_index][1]),
                                       LV_PART_MAIN | LV_STATE_DEFAULT);
-        if (objects.obj1)
-            lv_obj_set_style_img_recolor(objects.obj1, lv_color_hex(theme_colors[theme_index][0]),
-                                         LV_PART_MAIN | LV_STATE_DEFAULT);
+        if (objects.obj1) {
+            // GaggiBre color logo — do not theme-recolor.
+            lv_obj_set_style_img_recolor_opa(objects.obj1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        }
         if (objects.touch_icon)
             lv_obj_set_style_img_recolor(objects.touch_icon, lv_color_hex(theme_colors[theme_index][0]),
                                          LV_PART_MAIN | LV_STATE_DEFAULT);
