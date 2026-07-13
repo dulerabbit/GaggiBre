@@ -1,56 +1,81 @@
-<p align="center">
-<img src="docs/assets/logo.png" alt="Logo" width="250px" />
-<br />
-  
-[![](https://dcbadge.vercel.app/api/server/APw7rgPGPf)](https://discord.gg/APw7rgPGPf)
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
-[![Sonar QG][sonar-shield]][sonar-url]
-[![Sonar Violations][sonar-violations]][sonar-url]
-[![Sonar Tech Debt][sonar-tech-debt]][sonar-url]
+# GaggiBre
 
+<p align="center">
+<img src="docs/assets/gaggibre-logo.png" alt="GaggiBre Logo" width="250px" />
+<br />
+
+[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 
 </p>
 
-This project upgrades a Gaggia espresso machine with smart controls to improve your coffee-making experience. By adding a display and custom electronics, you can monitor and control the machine more easily.
+**GaggiBre** is an source-available smart firmware for Gaggia espresso machines based off of Gaggimate. It's just a fun project that I made with the help of Copliot and a lot of trial and error.
 
-<img src="docs/assets/gaggimate_poster.jpg" alt="Gaggia Classic Installation" width="500" />
+> **Why "Bre"?** *Bre* (pronounced "breh") is an ubiquitous, untranslatable Serbian interjection used as an intensifier — a "verbal exclamation mark" similar to informal English fillers like "come on," "bro," or "oh, brother." It adds emotional weight — urgency, camaraderie, or sheer enthusiasm — to whatever it follows. *GaggiBre* = your Gaggia, but louder. It gives you real-time Manual Brew control, pressure profiling, and a complete shot history — all running directly on affordable ESP32-S3 hardware with a touchscreen display.
+
+## Flash it now
+
+The easiest way to get started — no tools, no terminal, just Chrome or Edge and a USB cable:
+
+➡️ **[https://dulerabbit.github.io/GaggiBre/stable/](https://dulerabbit.github.io/GaggiBre/stable/)**
 
 ## Features
 
-- **Temperature Control**: Monitor the boiler temperature to ensure optimal brewing conditions.
-- **Brew timer**: Set a target duration and run the brewing for the specific time.
-- **Steam and Hot Water mode**: Control the pump and valve to run the respective task.
-- **Safety Features**: Automatic shutoff if the system becomes unresponsive or overheats.
-- **User Interface**: Simple, intuitive display to control and monitor the machine.
+### Manual Brew Mode
 
-## Screenshots and Images
+Take full control of your shot in real time. A dedicated brew screen lets you swipe to adjust target pressure and boiler temperature on the fly while the shot is pulling. A live chart shows pressure, temperature, and flow together so you can see exactly what the machine is doing. Elapsed time and weight are always visible. When you're done, save the shot with one tap — it's automatically named and stored — or discard it. No preset required, just you and the machine.
 
-<img src="docs/assets/standby-screen.png" alt="Standby Screen" width="300px" />
-<img src="docs/assets/brew-screen.png" alt="Brew Screen" width="300px" />
-<img src="docs/assets/pcb_render.png" alt="PCB Render" width="300px" />
+### Pressure Profiling
 
-### How to buy
+Build multi-phase pressure profiles with ramp, hold, and flow-control segments. Profiles are stored on the SD card and editable from the web UI. Pre-loaded defaults cover common espresso styles — 9-bar, lever, LM lever, flush, and descale — and you can import or export your own.
 
-You can buy your kit on https://shop.gaggimate.eu/
+### Shot History & Analyzer
 
-## How It Works
+Every shot is automatically logged with full pressure, temperature, flow, and weight data. The Shot Analyzer lets you overlay multiple shots, zoom into any segment, and compare pulls over time.
 
-The display allows you to control the espresso machine and see live temperature updates. If the machine becomes unresponsive or the temperature goes too high, it will automatically turn off for safety.
+### Web UI
 
-## Docs
+A mobile-friendly interface is served directly from the device — open `http://gaggimate.local` or the device IP in any browser on your network. Manage profiles, browse shot history, configure Wi-Fi, and trigger OTA firmware updates without touching a computer.
 
-The docs were moved to [https://gaggimate.eu/](https://gaggimate.eu/). You can find all sourcing and assembly information there.
-Additional documentation for the WebSocket API can be found in [docs/websocket-api.yaml](docs/websocket-api.yaml).
+### OTA Updates
 
+Update firmware over Wi-Fi from the web UI. Stable releases and nightly builds are available from the device's update screen — no USB required after the initial flash.
+
+### Temperature Control
+
+A boiler PID keeps temperature stable at your target. Separate targets for brew and steam modes. The standby screen shows live temperature at a glance.
+
+### Safety
+
+Automatic shutoff on overtemperature or watchdog timeout. The machine will always stop safely if something goes wrong.
+
+## Hardware
+
+GaggiBre runs on the same kit hardware supported by the upstream project:
+
+- **Buy a kit**: [shop.gaggimate.eu](https://shop.gaggimate.eu/)
+- **Full assembly docs**: [gaggimate.eu](https://gaggimate.eu/)
+- **PCB design files**: see the `pcb/` directory in this repo
+
+## Build from source
+
+```bash
+git clone --recursive https://github.com/dulerabbit/GaggiBre.git
+cd GaggiBre
+
+# Build and flash firmware (LilyGo display)
+pio run -e display -t upload --upload-port <PORT>
+
+# Build and flash firmware (Waveshare 4.3)
+pio run -e display-ws43 -t upload --upload-port <PORT>
+
+# Build and flash filesystem
+pio run -e display -t uploadfs --upload-port <PORT>
+```
 
 ## License
 
-This work is licensed under CC BY-NC-SA 4.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/
+Licensed under [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/).
 
-[sonar-violations]: https://img.shields.io/sonar/blocker_violations/jniebuhr_gaggimate?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge
-[sonar-shield]: https://img.shields.io/sonar/quality_gate/jniebuhr_gaggimate?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge
-[sonar-tech-debt]: https://img.shields.io/sonar/tech_debt/jniebuhr_gaggimate?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge
-[sonar-url]: https://sonarcloud.io/project/overview?id=jniebuhr_gaggimate
 [cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
 [cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
 [cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg?style=for-the-badge
