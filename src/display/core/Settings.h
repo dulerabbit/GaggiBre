@@ -290,7 +290,7 @@ class Settings {
     int emptyTankDistance = 200;
     int fullTankDistance = 50;
 
-    int altRelayFunction = ALT_RELAY_GRIND; // Default to grind
+    int altRelayFunction = ALT_RELAY_NONE; // Grind SSR only when secondary action is Grind
     // Menu 4th icon: Manual Brew (GaggiBre default) or Grind. Coupled to altRelayFunction.
     int secondaryAction = SECONDARY_ACTION_MANUAL_BREW;
     std::vector<String> buttonBehavior;

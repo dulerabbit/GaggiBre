@@ -112,11 +112,19 @@ Settings::Settings() {
     sunriseExtBrightness = preferences.getInt("sr_exb", 75);
     emptyTankDistance = preferences.getInt("sr_ed", 210);
     fullTankDistance = preferences.getInt("sr_fd", 30);
-    altRelayFunction = preferences.getInt("alt_relay", ALT_RELAY_GRIND);
+    altRelayFunction = preferences.getInt("alt_relay", ALT_RELAY_NONE);
     secondaryAction = preferences.getInt("sec_act", SECONDARY_ACTION_MANUAL_BREW);
     if (!preferences.isKey("sec_act")) {
-        // Migrate: derive secondary from existing alt-relay preference.
+        // Missing sec_act: Manual Brew unless legacy alt_relay was explicitly Grind.
         secondaryAction = (altRelayFunction == ALT_RELAY_GRIND) ? SECONDARY_ACTION_GRIND : SECONDARY_ACTION_MANUAL_BREW;
+    }
+    // One-time: adopt Manual Brew as the 4th-menu default for devices that only
+    // had Grind because of the old alt_relay default. After this, web Settings
+    // ("4th menu button") owns the choice.
+    if (!preferences.isKey("sec_ui")) {
+        secondaryAction = SECONDARY_ACTION_MANUAL_BREW;
+        preferences.putInt("sec_act", secondaryAction);
+        preferences.putBool("sec_ui", true);
     }
     altRelayFunction = (secondaryAction == SECONDARY_ACTION_GRIND) ? ALT_RELAY_GRIND : ALT_RELAY_NONE;
 

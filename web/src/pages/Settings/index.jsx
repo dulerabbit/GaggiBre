@@ -245,8 +245,8 @@ export function Settings() {
       const formDataToSubmit = new FormData(form);
       formDataToSubmit.set('steamPumpPercentage', formData.steamPumpPercentage);
       formDataToSubmit.set(
-        'altRelayFunction',
-        formData.altRelayFunction !== undefined ? formData.altRelayFunction : 1,
+        'secondaryAction',
+        formData.secondaryAction !== undefined ? formData.secondaryAction : 1,
       );
       formDataToSubmit.set(
         'buttonBehavior',
@@ -913,22 +913,20 @@ export function Settings() {
               </SettingsFormField>
             )}
             <SettingsFormField
-              label='Alt Relay / SSR2 Function'
-              htmlFor='altRelayFunction'
+              label='4th menu button'
+              htmlFor='secondaryAction'
               noMargin
             >
               <select
-                id='altRelayFunction'
-                name='altRelayFunction'
+                id='secondaryAction'
+                name='secondaryAction'
                 className='select select-bordered w-full'
-                value={formData.altRelayFunction ?? 1}
-                onChange={onChange('altRelayFunction')}
+                value={formData.secondaryAction ?? 1}
+                onChange={onChange('secondaryAction')}
               >
+                <option value={1}>Manual Brew (default)</option>
+                <option value={2}>Grind</option>
                 <option value={0}>None</option>
-                <option value={1}>Grind</option>
-                <option value={2} disabled className='text-gray-400'>
-                  Steam Boiler (Coming Soon)
-                </option>
               </select>
             </SettingsFormField>
           </Card>
