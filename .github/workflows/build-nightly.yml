@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: write
+
 name: Build Nightly
 jobs:
   build:
@@ -35,14 +36,11 @@ jobs:
       - name: Add version
         run: |
           mkdir -p out
-          mkdir -p upload/display
-          mkdir -p upload/headless
-          mkdir -p upload/controller
-          git tag -d nightly
-          git tag -d db
+          git tag -d nightly || true
+          git tag -d db || true
           git describe --tags --dirty > out/version.txt
       - name: Build Web
-        run: ./scripts/build_webui.sh
+        run: bash ./scripts/build_webui.sh
       - name: Build controller
         run: |
           export PLATFORMIO_BUILD_FLAGS="'-DNIGHTLY_BUILD'"
@@ -50,43 +48,20 @@ jobs:
           cp .pio/build/controller/firmware.bin out/board-firmware.bin
           cp .pio/build/controller/partitions.bin out/board-partitions.bin
           cp .pio/build/controller/bootloader.bin out/board-bootloader.bin
-          cp .pio/build/controller/firmware.bin upload/controller/firmware.bin
-          cp .pio/build/controller/partitions.bin upload/controller/partitions.bin
-          cp .pio/build/controller/bootloader.bin upload/controller/bootloader.bin
-      - uses: ./.github/actions/upload-firmware
-        env:
-          UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
-          UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
-        with:
-          channel: 'nightly'
-          target: 'controller'
-          firmware_dir: 'upload/controller'
-      - name: Build display FS
-        run: |
-          pio run -t buildfs -e display
-          cp .pio/build/display/littlefs.bin upload/display/filesystem.bin
-          cp .pio/build/display/littlefs.bin upload/headless/filesystem.bin
-          cp .pio/build/display/littlefs.bin out/display-filesystem.bin
-          cp .pio/build/display/littlefs.bin out/display-headless-filesystem.bin
-      - name: Build display
+      - name: Build display (LilyGo)
         run: |
           export PLATFORMIO_BUILD_FLAGS="'-DNIGHTLY_BUILD'"
           pio run -e display
-          cp .pio/build/display/firmware.bin out/display-firmware.bin
-          cp .pio/build/display/partitions.bin out/display-partitions.bin
-          cp .pio/build/display/bootloader.bin out/display-bootloader.bin
-          cp .pio/build/display/firmware.bin upload/display/firmware.bin
-          cp .pio/build/display/partitions.bin upload/display/partitions.bin
-          cp .pio/build/display/bootloader.bin upload/display/bootloader.bin
-      - uses: ./.github/actions/upload-firmware
-        env:
-          UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
-          UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
-        with:
-          channel: 'nightly'
-          target: 'display'
-          firmware_dir: 'upload/display'
-          firmware_files: 'bootloader.bin,partitions.bin,firmware.bin,filesystem.bin'
+          cp .pio/build/display/firmware.bin out/display-lilygo-firmware.bin
+          cp .pio/build/display/partitions.bin out/display-lilygo-partitions.bin
+          cp .pio/build/display/bootloader.bin out/display-lilygo-bootloader.bin
+      - name: Build display (Waveshare 4.3)
+        run: |
+          export PLATFORMIO_BUILD_FLAGS="'-DNIGHTLY_BUILD'"
+          pio run -e display-ws43
+          cp .pio/build/display-ws43/firmware.bin out/display-ws43-firmware.bin
+          cp .pio/build/display-ws43/partitions.bin out/display-ws43-partitions.bin
+          cp .pio/build/display-ws43/bootloader.bin out/display-ws43-bootloader.bin
       - name: Build headless
         run: |
           export PLATFORMIO_BUILD_FLAGS="'-DNIGHTLY_BUILD'"
@@ -94,23 +69,29 @@ jobs:
           cp .pio/build/display-headless/firmware.bin out/display-headless-firmware.bin
           cp .pio/build/display-headless/partitions.bin out/display-headless-partitions.bin
           cp .pio/build/display-headless/bootloader.bin out/display-headless-bootloader.bin
-          cp .pio/build/display-headless/firmware.bin upload/headless/firmware.bin
-          cp .pio/build/display-headless/partitions.bin upload/headless/partitions.bin
-          cp .pio/build/display-headless/bootloader.bin upload/headless/bootloader.bin
-      - uses: ./.github/actions/upload-firmware
-        env:
-          UPDATE_SERVER_HOST: ${{ secrets.UPDATE_SERVER_HOST }}
-          UPDATE_SERVER_API_KEY: ${{ secrets.UPDATE_SERVER_API_KEY }}
-        with:
-          channel: 'nightly'
-          target: 'headless'
-          firmware_dir: 'upload/headless'
-          firmware_files: 'bootloader.bin,partitions.bin,firmware.bin,filesystem.bin'
+      - name: Build filesystem images and flasher assets
+        run: |
+          pio run -t buildfs -e display
+          cp .pio/build/display/littlefs.bin out/display-lilygo-filesystem.bin
+
+          pio run -t buildfs -e display-ws43
+          cp .pio/build/display-ws43/littlefs.bin out/display-ws43-filesystem.bin
+
+          pio run -t buildfs -e display-headless
+          cp .pio/build/display-headless/littlefs.bin out/display-headless-filesystem.bin
+
+          cp scripts/flasher/index.html out/index.html
+          cp scripts/flasher/manifest-display.json out/manifest-display.json
+          cp scripts/flasher/manifest-display-ws43.json out/manifest-display-ws43.json
+          cp scripts/flasher/manifest-headless.json out/manifest-headless.json
+          cp scripts/flasher/manifest-controller.json out/manifest-controller.json
+          cp scripts/flasher/manifest-catalog.json out/manifest-catalog.json
       - name: Archive Firmware Files
         uses: actions/upload-artifact@v4
         with:
           name: gaggimate-firmware
           path: "out/*"
+
   release-nightly:
     needs: build
     runs-on: ubuntu-latest
@@ -132,7 +113,7 @@ jobs:
           tag_name: nightly
           name: 'Nightly Release $$'
           prerelease: true
-          body: 'Latest nightly release, use the nightly channel in the UI to download this firmware.'
+          body: 'Latest nightly release. Flash from https://dulerabbit.github.io/GaggiBre/nightly/ or use the nightly OTA channel.'
           files: |
             release/*
       - name: Deploy to GitHub Pages subdirectory

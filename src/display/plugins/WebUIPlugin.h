@@ -17,7 +17,7 @@ constexpr size_t STATUS_PERIOD = 500;
 constexpr size_t DNS_PERIOD = 50;
 
 const String LOCAL_URL = "http://4.4.4.1/";
-const String RELEASE_URL = "https://github.com/jniebuhr/gaggimate/releases/";
+const String RELEASE_URL = "https://github.com/dulerabbit/GaggiBre/releases/";
 
 class ProfileManager;
 

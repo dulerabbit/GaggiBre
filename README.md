@@ -72,6 +72,8 @@ pio run -e display-ws43 -t upload --upload-port <PORT>
 pio run -e display -t uploadfs --upload-port <PORT>
 ```
 
+Fork remotes, releases, and how to avoid accidental PRs to upstream Gaggimate: [docs/GAGGIBRE_FORK.md](docs/GAGGIBRE_FORK.md).
+
 ## License
 
 Licensed under [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/).
