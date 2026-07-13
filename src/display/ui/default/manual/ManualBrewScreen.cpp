@@ -513,14 +513,17 @@ static void buildUi() {
     lv_obj_t *promptLabel = lv_label_create(s_savePanel);
     lv_label_set_text(promptLabel, "Save as profile?");
     lv_obj_set_style_text_color(promptLabel, lv_color_hex(themeColor(3)), LV_PART_MAIN);
-    lv_obj_set_style_text_font(promptLabel, &lv_font_montserrat_16, LV_PART_MAIN);
-    lv_obj_align(promptLabel, LV_ALIGN_TOP_MID, 0, 28);
+    lv_obj_set_style_text_font(promptLabel, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_obj_set_style_align(promptLabel, LV_ALIGN_TOP_MID, LV_PART_MAIN);
+    lv_obj_set_y(promptLabel, 28);
 
     s_saveNameLabel = lv_label_create(s_savePanel);
     lv_label_set_text(s_saveNameLabel, "Manual 1");
     lv_obj_set_style_text_color(s_saveNameLabel, lv_color_hex(themeColor(0)), LV_PART_MAIN);
-    lv_obj_set_style_text_font(s_saveNameLabel, &lv_font_montserrat_24, LV_PART_MAIN);
-    lv_obj_align(s_saveNameLabel, LV_ALIGN_TOP_MID, 0, 58);
+    lv_obj_set_style_text_font(s_saveNameLabel, &lv_font_montserrat_34, LV_PART_MAIN);
+    lv_obj_set_style_text_align(s_saveNameLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_align(s_saveNameLabel, LV_ALIGN_TOP_MID, LV_PART_MAIN);
+    lv_obj_set_y(s_saveNameLabel, 58);
 
     lv_obj_t *actionRow = lv_obj_create(s_savePanel);
     lv_obj_set_size(actionRow, 280, 72);
@@ -539,18 +542,10 @@ static void buildUi() {
     lv_obj_set_style_border_width(discardBtn, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(discardBtn, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(discardBtn, onDiscard, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *discardPill = lv_obj_create(discardBtn);
-    lv_obj_set_size(discardPill, 30, 30);
-    lv_obj_center(discardPill);
-    lv_obj_set_style_radius(discardPill, 15, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(discardPill, lv_color_hex(themeColor(0)), LV_PART_MAIN);
-    lv_obj_set_style_border_width(discardPill, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(discardPill, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(discardPill, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_t *discardLbl = lv_label_create(discardPill);
-    lv_label_set_text(discardLbl, "x");
-    lv_obj_set_style_text_color(discardLbl, lv_color_hex(themeColor(1)), LV_PART_MAIN);
-    lv_obj_set_style_text_font(discardLbl, &lv_font_montserrat_16, LV_PART_MAIN);
+    lv_obj_t *discardLbl = lv_label_create(discardBtn);
+    lv_label_set_text(discardLbl, "\u00D7"); // × — bare mark, same visual weight as check
+    lv_obj_set_style_text_color(discardLbl, lv_color_hex(themeColor(0)), LV_PART_MAIN);
+    lv_obj_set_style_text_font(discardLbl, &lv_font_montserrat_34, LV_PART_MAIN);
     lv_obj_center(discardLbl);
 
     lv_obj_t *saveBtn = lv_btn_create(actionRow);
@@ -664,6 +659,7 @@ void update() {
             const int nextNumber = findNextManualProfileNumber();
             if (s_saveNameLabel) {
                 lv_label_set_text_fmt(s_saveNameLabel, "Manual %d", nextNumber);
+                lv_obj_align(s_saveNameLabel, LV_ALIGN_TOP_MID, 0, 58);
             }
             lv_obj_clear_flag(s_savePanel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_move_foreground(s_savePanel);
