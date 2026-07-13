@@ -70,6 +70,7 @@ class DefaultUI {
     lv_obj_t *gaugeMeters[4] = {nullptr};
     uint8_t gaugeCount = 0;
     void positionMenuIcon(lv_obj_t *obj, int angle, int radius);
+    void positionMenuIconGrid(lv_obj_t *obj, int x, int y);
 
     void updateState();
     void updateSystemStatus();

@@ -19,18 +19,25 @@
 
 #include <display/ui/default/eez/ui.h>
 #include <display/ui/default/manual/ManualBrewScreen.h>
+#include <display/ui/default/wide/WideLayout.h>
 
 static EffectManager effect_mgr;
 
 static constexpr uint32_t STARTUP_FADE_MS = 1000; // standby fade-in duration on power-up
 
-static constexpr int32_t GAUGE_TICK_LONG = 25;      // meter tick length on most screens
+static constexpr int32_t GAUGE_TICK_LONG = 25;      // circular meter tick length on most screens
 static constexpr int32_t GAUGE_TICK_SHORT = 10;     // shortened tick length on profile / new-menu screens
 static constexpr uint32_t GAUGE_TICK_ANIM_MS = 300; // tick length transition duration
 
-// Profile and the new menu screen show shortened meter ticks.
+// Profile / new menu / info show shortened meter ticks (circular).
 static bool isShortTickScreen(ScreensEnum s) {
     return s == SCREEN_ID_PROFILE_SCREEN || s == SCREEN_ID_MENU_SCREEN_NEW || s == SCREEN_ID_INFO_SCREEN;
+}
+
+// Wide rectangular dials: short/dot on standby + menu-class; long on brew-class.
+static bool isWideShortTickScreen(ScreensEnum s) {
+    return s == SCREEN_ID_STANDBY_SCREEN || s == SCREEN_ID_MENU_SCREEN || s == SCREEN_ID_MENU_SCREEN_NEW ||
+           s == SCREEN_ID_PROFILE_SCREEN || s == SCREEN_ID_INFO_SCREEN || s == SCREEN_ID_NEW_PROFILE_SCREEN;
 }
 
 // Format a millisecond duration as "m:ss" for the brew/profile time labels.
@@ -366,6 +373,7 @@ void DefaultUI::onVolumetricDelete() {
 
 void DefaultUI::setupPanel() {
     ui_init();
+    WideLayout::apply();
     ManualBrewScreen::init(controller);
     setupState();
     applyTheme();
@@ -438,17 +446,25 @@ void DefaultUI::setupState() {
                           &wifiConnected, &apActive);
     effect_mgr.use_effect([this]() { return currentScreen == SCREEN_ID_MENU_SCREEN_NEW; },
                           [this]() {
-                              int radius = 135;
-                              int count = grindAvailable ? 4 : 3;
-                              int step = 360 / (grindAvailable ? 4 : 3);
-                              int iconOffset = grindAvailable ? 1 : 0;
-                              int rotationOffset = count == 4 ? 45 : 0;
-                              positionMenuIcon(objects.btn_brew_1, step * 0 - rotationOffset, radius);
-                              positionMenuIcon(objects.btn_steam_1, step * 1 - rotationOffset, radius);
-                              positionMenuIcon(objects.btn_water_1, step * 2 - rotationOffset, radius);
-                              positionMenuIcon(objects.btn_grind_1, step * 3 - rotationOffset, radius);
+                              if (WideLayout::isActive()) {
+                                  // Rectangular 2×2 grid in the center band (Gaggimate icons, not circular orbit).
+                                  const int x = 110;
+                                  const int y = 90;
+                                  positionMenuIconGrid(objects.btn_brew_1, -x, -y);
+                                  positionMenuIconGrid(objects.btn_steam_1, x, -y);
+                                  positionMenuIconGrid(objects.btn_water_1, -x, y);
+                                  positionMenuIconGrid(objects.btn_grind_1, x, y);
+                              } else {
+                                  int radius = 135;
+                                  int count = grindAvailable ? 4 : 3;
+                                  int step = 360 / (grindAvailable ? 4 : 3);
+                                  int rotationOffset = count == 4 ? 45 : 0;
+                                  positionMenuIcon(objects.btn_brew_1, step * 0 - rotationOffset, radius);
+                                  positionMenuIcon(objects.btn_steam_1, step * 1 - rotationOffset, radius);
+                                  positionMenuIcon(objects.btn_water_1, step * 2 - rotationOffset, radius);
+                                  positionMenuIcon(objects.btn_grind_1, step * 3 - rotationOffset, radius);
+                              }
                               ManualBrewScreen::onMenuIconApply(objects.btn_grind_1);
-                              // positionMenuIcon(objects.btn_settings_1, step * (3 + iconOffset) - rotationOffset, radius);
                           },
                           &grindAvailable);
 }
@@ -502,6 +518,14 @@ void DefaultUI::setGaugeTickLength(int32_t len) {
 void DefaultUI::gaugeTickAnimCb(void *var, int32_t v) { static_cast<DefaultUI *>(var)->setGaugeTickLength(v); }
 
 void DefaultUI::animateGaugeTicks(ScreensEnum from, ScreensEnum to) {
+    // Wide rectangular dials: short↔long morph on vertical tick columns (~2× long).
+    if (WideLayout::isActive()) {
+        const int32_t fromLen = isWideShortTickScreen(from) ? WideLayout::kTickShort : WideLayout::kTickLong;
+        const int32_t toLen = isWideShortTickScreen(to) ? WideLayout::kTickShort : WideLayout::kTickLong;
+        WideLayout::animateTickLength(fromLen, toLen, GAUGE_TICK_ANIM_MS);
+        return;
+    }
+
     const int32_t fromLen = isShortTickScreen(from) ? GAUGE_TICK_SHORT : GAUGE_TICK_LONG;
     const int32_t toLen = isShortTickScreen(to) ? GAUGE_TICK_SHORT : GAUGE_TICK_LONG;
 
@@ -529,6 +553,13 @@ void DefaultUI::animateGaugeTicks(ScreensEnum from, ScreensEnum to) {
 void DefaultUI::positionMenuIcon(lv_obj_t *obj, int angle, int radius) {
     int x = sin(angle * M_PI / 180) * radius;
     int y = -1 * cos(angle * M_PI / 180) * radius;
+    lv_obj_set_pos(obj, x, y);
+}
+
+void DefaultUI::positionMenuIconGrid(lv_obj_t *obj, int x, int y) {
+    if (!obj) {
+        return;
+    }
     lv_obj_set_pos(obj, x, y);
 }
 
@@ -620,6 +651,12 @@ void DefaultUI::updateBoiler() {
                                                                 : controller->getTargetPressure());
     boiler.max_temperature(160.0f);
     boiler.max_pressure(settings.getPressureScaling());
+
+    const float maxTemp = 160.0f;
+    const float maxPressure = settings.getPressureScaling() > 0.0f ? settings.getPressureScaling() : 12.0f;
+    const float tempFrac = maxTemp > 0.0f ? static_cast<float>(controller->getCurrentTemp()) / maxTemp : 0.0f;
+    const float pressFrac = maxPressure > 0.0f ? pressure / maxPressure : 0.0f;
+    WideLayout::update(tempFrac, pressFrac);
 }
 
 // Mirror the live BrewProcess into brew_process_info; every field must stay valid/typed or the StatusScreen flow aborts.
