@@ -82,7 +82,10 @@ jobs:
           cp scripts/flasher/manifest-headless.json out/manifest-headless.json
           cp scripts/flasher/manifest-controller.json out/manifest-controller.json
           cp scripts/flasher/manifest-catalog.json out/manifest-catalog.json
-
+      - name: Validate flasher manifests
+        run: python scripts/validate_flasher_manifests.py --out-dir out
+      - name: Stage filesystem upload dirs
+        run: |
           mkdir -p upload/controller upload/display upload/display-ws43 upload/headless
 
           cp out/display-lilygo-filesystem.bin upload/display/filesystem.bin

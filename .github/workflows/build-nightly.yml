@@ -86,6 +86,8 @@ jobs:
           cp scripts/flasher/manifest-headless.json out/manifest-headless.json
           cp scripts/flasher/manifest-controller.json out/manifest-controller.json
           cp scripts/flasher/manifest-catalog.json out/manifest-catalog.json
+      - name: Validate flasher manifests
+        run: python scripts/validate_flasher_manifests.py --out-dir out
       - name: Archive Firmware Files
         uses: actions/upload-artifact@v4
         with:
