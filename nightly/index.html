@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GaggiBre Flasher</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <style>
+    :root {
+      --brand: #c0392b;
+      --bg: #1a1a1a;
+      --card: #242424;
+      --text: #f0f0f0;
+      --muted: #888;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    .version { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .description { color: #ccc; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
+    esp-web-install-button {
+      --esp-tools-button-color: var(--brand);
+      --esp-tools-button-text-color: #fff;
+    }
+    .note {
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .note a { color: #aaa; }
+    .targets {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.6rem;
+      margin: 0.75rem 0 1rem;
+    }
+    .targets button {
+      padding: 0.4rem 1rem;
+      border-radius: 10px;
+      border: 2px solid var(--muted);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+    .targets button.active {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+    }
+    .target-meta {
+      margin: 0.75rem 0 1rem;
+      color: #c9c9c9;
+      text-align: left;
+      font-size: 0.86rem;
+      line-height: 1.45;
+      min-height: 3.25rem;
+    }
+    .mode-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 0.8rem;
+      justify-content: center;
+    }
+    .mode-row button {
+      padding: 0.45rem 0.9rem;
+      border-radius: 10px;
+      border: 2px solid var(--muted);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.83rem;
+      transition: all 0.15s;
+    }
+    .mode-row button.active {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+    }
+    .install-wrap {
+      margin-bottom: 0.5rem;
+    }
+    .status-note {
+      font-size: 0.78rem;
+      color: #a8a8a8;
+      min-height: 1.2rem;
+      line-height: 1.4;
+    }
+    .manual-panel {
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid #3a3a3a;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>GaggiBre</h1>
+    <div class="version" id="version-label">Loading version…</div>
+    <p class="description">
+      Flash GaggiBre firmware to your display or controller board from the browser.
+      Connect via USB and click Install. Auto mode uses your last known hardware target.
+      Flash a <strong>matched pair</strong>: controller + display from the <em>same</em> GaggiBre release
+      (do not mix this EEZ build with an old SquareLine display, or the reverse).
+    </p>
+
+    <div class="mode-row">
+      <button id="mode-auto" class="active" onclick="setMode('auto')">Auto (One Button)</button>
+      <button id="mode-manual" onclick="setMode('manual')">Manual Target</button>
+    </div>
+
+    <div class="install-wrap">
+      <esp-web-install-button id="install-btn" manifest="manifest-display.json">
+        <span slot="unsupported">
+          Use Chrome or Edge on desktop to flash firmware.
+        </span>
+      </esp-web-install-button>
+    </div>
+    <div class="status-note" id="status-note">Loading target catalog…</div>
+
+    <div class="manual-panel hidden" id="manual-panel">
+      <div class="targets" id="targets"></div>
+      <div class="target-meta" id="target-meta"></div>
+      <div class="status-note">Manual selection is saved as your preferred Auto target.</div>
+    </div>
+
+    <label class="guard hidden" id="legacy-guard" aria-hidden="true">
+      <input type="checkbox" />
+      <span>Legacy guard</span>
+    </label>
+
+    <p class="note">
+      Requires Chrome or Edge on a desktop/laptop.<br />
+      Always flash controller and display from the same release version.<br />
+      Source: <a href="https://github.com/dulerabbit/GaggiBre" target="_blank">github.com/dulerabbit/GaggiBre</a>
+    </p>
+  </div>
+
+  <script>
+    const fallbackCatalog = {
+      targets: [
+        {
+          id: 'display-lilygo',
+          label: 'Display (LilyGo T-RGB)',
+          manifest: 'manifest-display.json',
+          note: 'Use for LilyGo T-RGB boards.'
+        },
+        {
+          id: 'display-ws43',
+          label: 'Display (Waveshare 4.3)',
+          manifest: 'manifest-display-ws43.json',
+          note: 'Use for Waveshare ESP32-S3-Touch-LCD-4.3.'
+        },
+        {
+          id: 'headless',
+          label: 'Headless',
+          manifest: 'manifest-headless.json',
+          note: 'No screen driver/UI; backend services only.'
+        },
+        {
+          id: 'controller',
+          label: 'Controller Board',
+          manifest: 'manifest-controller.json',
+          note: 'Use for the separate GaggiBre controller board.'
+        }
+      ]
+    };
+
+    const state = {
+      catalog: fallbackCatalog,
+      selected: null,
+      mode: 'auto'
+    };
+
+    const PREFERRED_TARGET_KEY = 'gaggibrePreferredTarget';
+
+    function renderTargets() {
+      const root = document.getElementById('targets');
+      root.innerHTML = '';
+      state.catalog.targets.forEach((target, index) => {
+        const btn = document.createElement('button');
+        btn.textContent = target.label;
+        btn.dataset.targetId = target.id;
+        btn.onclick = () => selectTarget(target.id);
+        if (index === 0 && !state.selected) {
+          btn.classList.add('active');
+          state.selected = target.id;
+        }
+        root.appendChild(btn);
+      });
+      const preferred = localStorage.getItem(PREFERRED_TARGET_KEY);
+      if (preferred && state.catalog.targets.some((x) => x.id === preferred)) {
+        state.selected = preferred;
+      }
+      updateSelectedUI();
+      updateAutoTarget();
+    }
+
+    function selectTarget(targetId) {
+      state.selected = targetId;
+      updateSelectedUI();
+      document.querySelectorAll('.targets button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.targetId === targetId);
+      });
+      localStorage.setItem(PREFERRED_TARGET_KEY, targetId);
+      updateAutoTarget();
+    }
+
+    function updateSelectedUI() {
+      const target = state.catalog.targets.find((x) => x.id === state.selected) || state.catalog.targets[0];
+      document.getElementById('target-meta').textContent = target.note || '';
+      document.querySelectorAll('.targets button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.targetId === target.id);
+      });
+    }
+
+    function setInstallManifest(manifestName) {
+      document.getElementById('install-btn').setAttribute('manifest', manifestName);
+    }
+
+    function updateAutoTarget() {
+      const preferred = localStorage.getItem(PREFERRED_TARGET_KEY);
+      const fallback = state.catalog.targets[0];
+      const selected = state.catalog.targets.find((x) => x.id === preferred) || state.catalog.targets.find((x) => x.id === state.selected) || fallback;
+
+      if (state.mode === 'auto') {
+        setInstallManifest(selected.manifest);
+      }
+
+      const status = document.getElementById('status-note');
+      status.textContent = 'Auto target: ' + selected.label + '. Switch to Manual to change it.';
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      const autoBtn = document.getElementById('mode-auto');
+      const manualBtn = document.getElementById('mode-manual');
+      autoBtn.classList.toggle('active', mode === 'auto');
+      manualBtn.classList.toggle('active', mode === 'manual');
+      document.getElementById('manual-panel').classList.toggle('hidden', mode !== 'manual');
+
+      if (mode === 'manual') {
+        const target = state.catalog.targets.find((x) => x.id === state.selected) || state.catalog.targets[0];
+        setInstallManifest(target.manifest);
+        document.getElementById('status-note').textContent = 'Manual target: ' + target.label + '.';
+      } else {
+        updateAutoTarget();
+      }
+    }
+
+    function loadCatalog() {
+      fetch('manifest-catalog.json')
+        .then((r) => {
+          if (!r.ok) {
+            throw new Error('No manifest catalog');
+          }
+          return r.json();
+        })
+        .then((catalog) => {
+          if (!catalog || !Array.isArray(catalog.targets) || catalog.targets.length === 0) {
+            throw new Error('Invalid catalog');
+          }
+          state.catalog = catalog;
+          renderTargets();
+          setMode(state.mode);
+        })
+        .catch(() => {
+          state.catalog = fallbackCatalog;
+          renderTargets();
+          setMode(state.mode);
+        });
+    }
+
+    loadCatalog();
+
+    fetch('version.txt').then(r => r.text()).then(v => {
+      document.getElementById('version-label').textContent = 'Version: ' + v.trim();
+    }).catch(() => {
+      document.getElementById('version-label').textContent = '';
+    });
+  </script>
+</body>
+</html>
