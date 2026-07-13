@@ -543,7 +543,8 @@ static void buildUi() {
     lv_obj_set_style_pad_all(discardBtn, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(discardBtn, onDiscard, LV_EVENT_CLICKED, nullptr);
     lv_obj_t *discardLbl = lv_label_create(discardBtn);
-    lv_label_set_text(discardLbl, "\u00D7"); // × — bare mark, same visual weight as check
+    // ASCII "X" — Montserrat builds lack U+00D7 (×), which renders as a tofu rectangle.
+    lv_label_set_text(discardLbl, "X");
     lv_obj_set_style_text_color(discardLbl, lv_color_hex(themeColor(0)), LV_PART_MAIN);
     lv_obj_set_style_text_font(discardLbl, &lv_font_montserrat_34, LV_PART_MAIN);
     lv_obj_center(discardLbl);
