@@ -1122,6 +1122,7 @@ void Controller::onVolumetricMeasurement(double measurement, VolumetricMeasureme
                            "value", static_cast<float>(measurement));
     if (source == VolumetricMeasurementSource::BLUETOOTH) {
         lastBluetoothMeasurement = millis();
+        lastBluetoothWeight = static_cast<float>(measurement);
     }
 
     if (currentVolumetricSource != source) {

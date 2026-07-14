@@ -9,8 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs" / "assets" / "gaggibre-logo.png"
 OUT_C = ROOT / "src" / "display" / "ui" / "default" / "eez" / "images" / "ui_image_logo.c"
 
-# Wide wordmark baked at on-screen size — no LVGL zoom after.
-TARGET_W = 640
+# Circular LilyGo standby (480×480): bake at SquareLine-stable on-screen width
+# so zoom 256 fits inside the round bezel. Wide 4.3 uses eez43's own logo.
+TARGET_W = 380
 PAD = 8
 
 
