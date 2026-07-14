@@ -62,11 +62,35 @@ uint32_t s_lastChartMs = 0;
 std::vector<std::pair<uint32_t, float>> s_timeline;
 
 static constexpr int MANUAL_TEMP_PIXELS_PER_STEP = 50;
-static constexpr lv_coord_t kSatSize = 72;
-static constexpr lv_coord_t kCenterGauge = 156;
 // Match EEZ circular brew/dials control anchors (screen-center offsets).
 static constexpr lv_coord_t kCircularPlayY = 130;
 static constexpr lv_coord_t kCircularBackY = 210;
+
+struct RaceClusterLayout {
+    lv_coord_t panelW;
+    lv_coord_t panelH;
+    lv_coord_t gaugeSize;
+    lv_coord_t gaugeY;
+    lv_coord_t satSize;
+    lv_coord_t satX[4];
+    lv_coord_t satY[4];
+};
+
+// LilyGo 480×480
+static constexpr RaceClusterLayout kCircularCluster = {
+    360, 360, 156, -92, 72, {-118, -40, 40, 118}, {11, 41, 41, 11},
+};
+// Waveshare 800×480 — arc under gauge (LilyGo pattern scaled), above play
+static constexpr RaceClusterLayout kWideCluster = {
+    400, 360, 180, -70, 84, {-138, -47, 47, 138}, {75, 110, 110, 75},
+};
+
+// Wide tick columns (match WideLayout)
+static constexpr int kWideColW = 150;
+static constexpr int kWideColPadX = 4;
+static constexpr int kWideLabelGap = 8;
+static constexpr int kWideIconBandH = 52; // bottom thermometer/tach row
+static constexpr int kWideSwipeTopY = 16; // below live readout band
 
 static int uiW() {
     lv_disp_t *disp = lv_disp_get_default();
@@ -203,11 +227,12 @@ static void onPressureZone(lv_event_t *e) {
     const float scaling = std::min(s_controller->getSettings().getPressureScaling(), 12.0f);
     float newPressure;
     if (isWide()) {
-        lv_area_t area;
-        lv_obj_get_coords(s_pressureZone, &area);
-        const float localY = static_cast<float>(point.y - area.y1);
-        const float height = static_cast<float>(lv_area_get_height(&area));
-        const float t = height > 0.0f ? constrain(localY / height, 0.0f, 1.0f) : 0.0f;
+        // Map against the lit tick band (below readout, above bottom icons) so
+        // full-height swipes on the bars reach 0 .. scaling.
+        const float yTop = static_cast<float>(kWideSwipeTopY);
+        const float yBot = static_cast<float>(uiH() - kWideIconBandH);
+        const float span = std::max(yBot - yTop, 1.0f);
+        const float t = constrain((static_cast<float>(point.y) - yTop) / span, 0.0f, 1.0f);
         newPressure = constrain(scaling * (1.0f - t), 0.0f, scaling);
     } else {
         // SquareLine stable: absolute screen Y / 400 → 0..scaling (top = max)
@@ -322,17 +347,6 @@ static void onDiscard(lv_event_t *e) {
     s_shotInProgress = false;
 }
 
-static lv_obj_t *makeLabel(lv_obj_t *parent, const char *text, lv_coord_t x, lv_coord_t y, const lv_font_t *font) {
-    lv_obj_t *label = lv_label_create(parent);
-    lv_label_set_text(label, text);
-    lv_obj_set_style_text_color(label, lv_color_hex(0xE8E8E8), LV_PART_MAIN);
-    if (font) {
-        lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
-    }
-    lv_obj_set_pos(label, x, y);
-    return label;
-}
-
 static void onMeterDraw(lv_event_t *e) {
     if (lv_event_get_code(e) == LV_EVENT_DRAW_POST) {
         action_on_meter_draw(e);
@@ -408,14 +422,33 @@ static void buildCircularDials(lv_obj_t *parent) {
     lv_obj_set_style_text_font(s_pressureLabel, &lv_font_montserrat_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(s_pressureLabel, lv_color_hex(pressColLive), LV_PART_MAIN);
     lv_obj_align(s_pressureLabel, LV_ALIGN_CENTER, 50, -205);
+
+    // Bottom icons — same placement as EEZ dials on every other LilyGo screen
+    lv_obj_t *tempIcon = lv_img_create(parent);
+    lv_obj_set_pos(tempIcon, -85, 200);
+    lv_img_set_src(tempIcon, &img_thermometer_half_40x40);
+    lv_img_set_zoom(tempIcon, 150);
+    lv_obj_set_style_align(tempIcon, LV_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_img_recolor(tempIcon, lv_color_hex(tempColLive), LV_PART_MAIN);
+    lv_obj_set_style_img_recolor_opa(tempIcon, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(tempIcon, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_t *pressIcon = lv_img_create(parent);
+    lv_obj_set_pos(pressIcon, 85, 200);
+    lv_img_set_src(pressIcon, &img_tachometer_fast_40x40);
+    lv_img_set_zoom(pressIcon, 150);
+    lv_obj_set_style_align(pressIcon, LV_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_img_recolor(pressIcon, lv_color_hex(pressColLive), LV_PART_MAIN);
+    lv_obj_set_style_img_recolor_opa(pressIcon, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(pressIcon, LV_OBJ_FLAG_CLICKABLE);
 }
 
-static lv_obj_t *makeSatellite(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, uint32_t borderColor, const char *text,
-                               lv_obj_t **outLabel) {
+static lv_obj_t *makeSatellite(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t size, uint32_t borderColor,
+                               const char *text, lv_obj_t **outLabel) {
     lv_obj_t *ring = lv_obj_create(parent);
-    lv_obj_set_size(ring, kSatSize, kSatSize);
+    lv_obj_set_size(ring, size, size);
     lv_obj_align(ring, LV_ALIGN_CENTER, x, y);
-    lv_obj_set_style_radius(ring, kSatSize / 2, LV_PART_MAIN);
+    lv_obj_set_style_radius(ring, size / 2, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ring, lv_color_hex(0x121212), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ring, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_color(ring, lv_color_hex(borderColor), LV_PART_MAIN);
@@ -435,13 +468,20 @@ static lv_obj_t *makeSatellite(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, uin
     return ring;
 }
 
-static void buildCircularCenter(lv_obj_t *parent) {
+static void buildRaceCluster(lv_obj_t *parent, const RaceClusterLayout &layout) {
     // Transparent host for center gauge + satellites (no chart — web UI owns analysis)
+    const bool wide = isWide();
     s_contentPanel = lv_obj_create(parent);
-    lv_obj_set_size(s_contentPanel, 360, 360);
-    lv_obj_align(s_contentPanel, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_radius(s_contentPanel, 180, LV_PART_MAIN);
-    lv_obj_set_style_clip_corner(s_contentPanel, true, LV_PART_MAIN);
+    lv_obj_set_size(s_contentPanel, layout.panelW, layout.panelH);
+    lv_obj_align(s_contentPanel, LV_ALIGN_CENTER, 0, wide ? -20 : 0);
+    // LilyGo: circular clip matches the round bezel. Wide: no clip — sats must not be cut off.
+    if (wide) {
+        lv_obj_set_style_radius(s_contentPanel, 0, LV_PART_MAIN);
+        lv_obj_set_style_clip_corner(s_contentPanel, false, LV_PART_MAIN);
+    } else {
+        lv_obj_set_style_radius(s_contentPanel, layout.panelW / 2, LV_PART_MAIN);
+        lv_obj_set_style_clip_corner(s_contentPanel, true, LV_PART_MAIN);
+    }
     lv_obj_set_style_bg_opa(s_contentPanel, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(s_contentPanel, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(s_contentPanel, 0, LV_PART_MAIN);
@@ -454,9 +494,9 @@ static void buildCircularCenter(lv_obj_t *parent) {
 
     // Primary control: set-pressure gauge (follows right swipe)
     s_pressureCircle = lv_obj_create(s_contentPanel);
-    lv_obj_set_size(s_pressureCircle, kCenterGauge, kCenterGauge);
-    lv_obj_align(s_pressureCircle, LV_ALIGN_CENTER, 0, -92); // another ~5mm up from -55
-    lv_obj_set_style_radius(s_pressureCircle, kCenterGauge / 2, LV_PART_MAIN);
+    lv_obj_set_size(s_pressureCircle, layout.gaugeSize, layout.gaugeSize);
+    lv_obj_align(s_pressureCircle, LV_ALIGN_CENTER, 0, layout.gaugeY);
+    lv_obj_set_style_radius(s_pressureCircle, layout.gaugeSize / 2, LV_PART_MAIN);
     lv_obj_set_style_bg_color(s_pressureCircle, lv_color_hex(0x1A1A1A), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s_pressureCircle, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_color(s_pressureCircle, lv_color_hex(0x00FFFF), LV_PART_MAIN);
@@ -471,15 +511,14 @@ static void buildCircularCenter(lv_obj_t *parent) {
     lv_obj_set_style_text_align(s_targetPressureLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_center(s_targetPressureLabel);
 
-    // Race-car satellites: another ~5mm up, still clear of play at y=130
     const uint32_t setTempCol = 0xF62C2C; // red = commanded temp (not live)
     const uint32_t timeCol = 0xE8E8E8;
     const uint32_t flowCol = 0x00CC44;
     const uint32_t weightCol = 0xF0A030;
-    makeSatellite(s_contentPanel, -118, 11, setTempCol, "93°", &s_setTempLabel);
-    makeSatellite(s_contentPanel, -40, 41, timeCol, "0:00", &s_elapsedLabel);
-    makeSatellite(s_contentPanel, 40, 41, flowCol, "--", &s_flowLabel);
-    makeSatellite(s_contentPanel, 118, 11, weightCol, "--g", &s_weightLabel);
+    makeSatellite(s_contentPanel, layout.satX[0], layout.satY[0], layout.satSize, setTempCol, "93°", &s_setTempLabel);
+    makeSatellite(s_contentPanel, layout.satX[1], layout.satY[1], layout.satSize, timeCol, "0:00", &s_elapsedLabel);
+    makeSatellite(s_contentPanel, layout.satX[2], layout.satY[2], layout.satSize, flowCol, "--", &s_flowLabel);
+    makeSatellite(s_contentPanel, layout.satX[3], layout.satY[3], layout.satSize, weightCol, "--g", &s_weightLabel);
 }
 
 static void buildSavePanel(lv_obj_t *parent) {
@@ -578,7 +617,7 @@ static void buildCircularUi(int W, int H) {
     s_pressureFill = nullptr;
     s_title = nullptr;
 
-    buildCircularCenter(s_screen);
+    buildRaceCluster(s_screen, kCircularCluster);
 
     s_startBtn = lv_img_create(s_screen);
     lv_img_set_src(s_startBtn, &img_play_40x40);
@@ -602,13 +641,14 @@ static void buildCircularUi(int W, int H) {
 }
 
 static void buildWideUi(int W, int H) {
-    const int colW = 150;
+    const int colW = kWideColW;
     const int colH = H;
-    const int colPadX = 4;
+    const int colPadX = kWideColPadX;
     const int colTop = 0;
-    const int centerLeft = 220;
-    const int centerRight = 580;
-    const int centerW = centerRight - centerLeft;
+    const int leftInner = colPadX + colW;          // 154 — right edge of left ticks
+    const int rightInner = W - colPadX - colW;     // 646 — left edge of right ticks
+    const int iconCxLeft = colPadX + colW / 2;
+    const int iconCxRight = W - colPadX - colW / 2;
 
     WideLayout::addStandaloneTicks(s_screen);
     WideLayout::setTickLength(WideLayout::kTickLong);
@@ -628,14 +668,21 @@ static void buildWideUi(int W, int H) {
     lv_obj_set_ext_click_area(s_tempZone, 20);
 
     const uint32_t tempColor = theme_colors[eez_flow_get_selected_theme_index()][6];
-    s_tempLabel = makeLabel(s_screen, "93 C", 155, 10, &lv_font_montserrat_24);
+    // Live temp in center gutter, flush to inner edge of left tick column
+    s_tempLabel = lv_label_create(s_screen);
+    lv_label_set_text(s_tempLabel, "93°C");
+    lv_obj_set_style_text_font(s_tempLabel, &lv_font_montserrat_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(s_tempLabel, lv_color_hex(tempColor), LV_PART_MAIN);
+    lv_obj_set_style_text_align(s_tempLabel, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    lv_obj_set_pos(s_tempLabel, leftInner + kWideLabelGap, 10);
+
     lv_obj_t *tempIcon = lv_img_create(s_screen);
     lv_img_set_src(tempIcon, &img_thermometer_half_40x40);
     lv_img_set_zoom(tempIcon, 150);
     lv_obj_set_style_img_recolor(tempIcon, lv_color_hex(tempColor), LV_PART_MAIN);
     lv_obj_set_style_img_recolor_opa(tempIcon, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_pos(tempIcon, colPadX + colW / 2 - 20, H - 52);
+    lv_obj_clear_flag(tempIcon, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_pos(tempIcon, iconCxLeft - 20, H - kWideIconBandH);
 
     s_pressureZone = lv_obj_create(s_screen);
     lv_obj_set_size(s_pressureZone, colW, colH);
@@ -659,58 +706,23 @@ static void buildWideUi(int W, int H) {
     lv_obj_clear_flag(s_pressureFill, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
 
     const uint32_t pressColor = theme_colors[eez_flow_get_selected_theme_index()][7];
-    s_targetPressureLabel = makeLabel(s_screen, "0.0 bar", 560, 10, &lv_font_montserrat_24);
-    lv_obj_set_style_text_color(s_targetPressureLabel, lv_color_hex(pressColor), LV_PART_MAIN);
+    // Live pressure in center gutter — right edge flush to inner edge of right ticks
+    s_pressureLabel = lv_label_create(s_screen);
+    lv_label_set_text(s_pressureLabel, "0.0 bar");
+    lv_obj_set_style_text_font(s_pressureLabel, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(s_pressureLabel, lv_color_hex(pressColor), LV_PART_MAIN);
+    lv_obj_set_style_text_align(s_pressureLabel, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    lv_obj_align(s_pressureLabel, LV_ALIGN_TOP_RIGHT, -(W - rightInner + kWideLabelGap), 10);
+
     lv_obj_t *pressIcon = lv_img_create(s_screen);
     lv_img_set_src(pressIcon, &img_tachometer_fast_40x40);
     lv_img_set_zoom(pressIcon, 150);
     lv_obj_set_style_img_recolor(pressIcon, lv_color_hex(pressColor), LV_PART_MAIN);
     lv_obj_set_style_img_recolor_opa(pressIcon, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_pos(pressIcon, W - colPadX - colW / 2 - 20, H - 52);
+    lv_obj_clear_flag(pressIcon, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_pos(pressIcon, iconCxRight - 20, H - kWideIconBandH);
 
-    const int chartW = centerW;
-    const int chartH = 230;
-    s_chart = lv_chart_create(s_screen);
-    lv_obj_set_size(s_chart, chartW, chartH);
-    lv_obj_set_pos(s_chart, centerLeft + (centerW - chartW) / 2, 52);
-    lv_chart_set_type(s_chart, LV_CHART_TYPE_LINE);
-    lv_chart_set_point_count(s_chart, 120);
-    lv_chart_set_range(s_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 120);
-    lv_chart_set_div_line_count(s_chart, 0, 0);
-    lv_obj_set_style_line_width(s_chart, 3, LV_PART_ITEMS);
-    lv_obj_set_style_line_opa(s_chart, LV_OPA_COVER, LV_PART_ITEMS);
-    lv_obj_set_style_bg_opa(s_chart, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_border_width(s_chart, 0, LV_PART_MAIN);
-    lv_obj_set_style_line_opa(s_chart, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_line_opa(s_chart, LV_OPA_TRANSP, LV_PART_TICKS);
-    s_chartPressure = lv_chart_add_series(s_chart, lv_color_hex(0x2CA4F6), LV_CHART_AXIS_PRIMARY_Y);
-    s_chartTemp = nullptr;
-    s_chartFlow = lv_chart_add_series(s_chart, lv_color_hex(0xF0A030), LV_CHART_AXIS_PRIMARY_Y);
-
-    lv_obj_t *statsRow = lv_obj_create(s_screen);
-    lv_obj_set_size(statsRow, 632 - 168, 36);
-    lv_obj_set_pos(statsRow, 168, 292);
-    lv_obj_set_style_bg_opa(statsRow, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_border_width(statsRow, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(statsRow, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(statsRow, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_flex_flow(statsRow, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(statsRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-    auto makeStat = [&](const char *text, const lv_font_t *font) -> lv_obj_t * {
-        lv_obj_t *label = lv_label_create(statsRow);
-        lv_label_set_text(label, text);
-        lv_obj_set_style_text_color(label, lv_color_hex(0xE8E8E8), LV_PART_MAIN);
-        if (font) {
-            lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
-        }
-        return label;
-    };
-    s_elapsedLabel = makeStat("0:00", &lv_font_montserrat_20);
-    s_flowLabel = makeStat("-- ml/s", &lv_font_montserrat_16);
-    s_pressureLabel = makeStat("-- bar", &lv_font_montserrat_16);
-    lv_obj_set_style_text_color(s_pressureLabel, lv_color_hex(pressColor), LV_PART_MAIN);
-    s_weightLabel = makeStat("-- g", &lv_font_montserrat_16);
+    buildRaceCluster(s_screen, kWideCluster);
 
     s_startBtn = lv_img_create(s_screen);
     lv_img_set_src(s_startBtn, &img_play_40x40);
@@ -720,6 +732,10 @@ static void buildWideUi(int W, int H) {
     lv_obj_set_style_img_recolor_opa(s_startBtn, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_add_event_cb(s_startBtn, onToggle, LV_EVENT_CLICKED, nullptr);
     lv_obj_set_pos(s_startBtn, WideLayout::kPlayX, WideLayout::kPlayY);
+
+    // Swipe columns above cluster chrome so tick-band presses always hit
+    lv_obj_move_foreground(s_tempZone);
+    lv_obj_move_foreground(s_pressureZone);
     lv_obj_move_foreground(s_startBtn);
 
     lv_obj_add_event_cb(s_screen, onBack, LV_EVENT_GESTURE, nullptr);
@@ -760,8 +776,6 @@ static void updateCircularDials() {
     const float scaleMax = std::max(scaling * 10.0f, 1.0f);
     const int32_t targetPressVal =
         static_cast<int32_t>(lroundf(constrain(targetBar * 10.0f, 0.0f, scaleMax) * (160.0f / scaleMax)));
-    const int32_t currentPressVal =
-        static_cast<int32_t>(lroundf(constrain(currentBar * 10.0f, 0.0f, scaleMax) * (160.0f / scaleMax)));
 
     if (s_tempMeter && s_tempNeedle) {
         lv_meter_set_indicator_value(s_tempMeter, s_tempNeedle, static_cast<int32_t>(lroundf(targetTemp)));
@@ -772,8 +786,9 @@ static void updateCircularDials() {
     if (s_pressureMeter && s_pressureNeedle) {
         lv_meter_set_indicator_value(s_pressureMeter, s_pressureNeedle, targetPressVal);
     }
+    // Freeze pressure dial graphics on setpoint — live bar only updates the number label.
     if (s_pressureMeter && s_pressureArcFill) {
-        lv_meter_set_indicator_end_value(s_pressureMeter, s_pressureArcFill, currentPressVal);
+        lv_meter_set_indicator_end_value(s_pressureMeter, s_pressureArcFill, targetPressVal);
     }
 
     // Top: live sensors only
@@ -860,15 +875,10 @@ void update() {
     const bool active = s_controller->isActive();
     const bool wide = isWide();
 
+    // Both layouts use the race-car cluster: live top numbers, set pressure/temp in cluster.
+    updateCircularDials();
     if (wide) {
-        lv_label_set_text_fmt(s_tempLabel, "%d C", static_cast<int>(s_controller->getTargetTemp()));
-        lv_label_set_text_fmt(s_targetPressureLabel, "%.1f bar", s_controller->getManualPressureTarget());
-        if (s_pressureLabel) {
-            lv_label_set_text_fmt(s_pressureLabel, "%.1f bar", s_controller->getCurrentPressure());
-        }
         updatePressureFill(s_controller->getManualPressureTarget());
-    } else {
-        updateCircularDials();
     }
 
     if (s_startBtn) {
@@ -903,76 +913,42 @@ void update() {
     BrewProcess *bp = brewing ? static_cast<BrewProcess *>(proc) : nullptr;
 
     // Weight: prefer live BLE scale (same as main brew screen); fall back to brew volume.
-    auto updateWeightLabel = [&](bool circular) {
+    auto updateWeightLabel = [&]() {
         if (!s_weightLabel) {
             return;
         }
         if (s_controller->isBluetoothScaleHealthy()) {
-            if (circular) {
-                lv_label_set_text_fmt(s_weightLabel, "%.0fg", s_controller->getBluetoothWeight());
-                lv_obj_center(s_weightLabel);
-            } else {
-                lv_label_set_text_fmt(s_weightLabel, "%.1f g", s_controller->getBluetoothWeight());
-            }
+            lv_label_set_text_fmt(s_weightLabel, "%.1fg", s_controller->getBluetoothWeight());
+            lv_obj_center(s_weightLabel);
         } else if (bp) {
-            if (circular) {
-                lv_label_set_text_fmt(s_weightLabel, "%.0fg", bp->currentVolume);
-                lv_obj_center(s_weightLabel);
-            } else {
-                lv_label_set_text_fmt(s_weightLabel, "%.1f g", bp->currentVolume);
-            }
+            lv_label_set_text_fmt(s_weightLabel, "%.1fg", bp->currentVolume);
+            lv_obj_center(s_weightLabel);
         } else if (!active && !savePanelVisible()) {
-            if (circular) {
-                lv_label_set_text(s_weightLabel, "--g");
-                lv_obj_center(s_weightLabel);
-            } else {
-                lv_label_set_text(s_weightLabel, "-- g");
-            }
+            lv_label_set_text(s_weightLabel, "--g");
+            lv_obj_center(s_weightLabel);
         }
     };
 
     if (bp) {
         const unsigned long secs = (millis() - bp->processStarted) / 1000;
-        if (wide) {
-            lv_label_set_text_fmt(s_elapsedLabel, "%lu:%02lu", secs / 60, secs % 60);
-            lv_label_set_text_fmt(s_flowLabel, "%.1f ml/s", bp->currentFlow);
-        } else {
-            lv_label_set_text_fmt(s_elapsedLabel, "%lu:%02lu", secs / 60, secs % 60);
-            lv_obj_center(s_elapsedLabel);
-            lv_label_set_text_fmt(s_flowLabel, "%.1f", bp->currentFlow);
-            lv_obj_center(s_flowLabel);
-        }
-        updateWeightLabel(!wide);
+        lv_label_set_text_fmt(s_elapsedLabel, "%lu:%02lu", secs / 60, secs % 60);
+        lv_obj_center(s_elapsedLabel);
+        lv_label_set_text_fmt(s_flowLabel, "%.1f", bp->currentFlow);
+        lv_obj_center(s_flowLabel);
+        updateWeightLabel();
 
         const uint32_t now = millis();
-        if (wide && s_chart && now - s_lastChartMs >= 250u) {
-            s_lastChartMs = now;
-            const float p = s_controller->getCurrentPressure();
-            const float f = bp->currentFlow;
-            lv_chart_set_next_value(s_chart, s_chartPressure, static_cast<lv_coord_t>(p * 10.0f));
-            lv_chart_set_next_value(s_chart, s_chartFlow, static_cast<lv_coord_t>(f * 10.0f));
-            recordPressurePoint(s_controller->getManualPressureTarget());
-        } else if (!wide && now - s_lastChartMs >= 350u) {
-            // No chart on circular — still sample pressure timeline for save-as-profile
+        if (now - s_lastChartMs >= 350u) {
             s_lastChartMs = now;
             recordPressurePoint(s_controller->getManualPressureTarget());
         }
     } else {
-        // Idle / non-brew: still refresh live BLE weight; reset time/flow when inactive.
-        updateWeightLabel(!wide);
+        updateWeightLabel();
         if (!active && !savePanelVisible()) {
-            if (wide) {
-                lv_label_set_text(s_elapsedLabel, "0:00");
-                lv_label_set_text(s_flowLabel, "-- ml/s");
-                if (s_pressureLabel) {
-                    lv_label_set_text(s_pressureLabel, "-- bar");
-                }
-            } else {
-                lv_label_set_text(s_elapsedLabel, "0:00");
-                lv_obj_center(s_elapsedLabel);
-                lv_label_set_text(s_flowLabel, "--");
-                lv_obj_center(s_flowLabel);
-            }
+            lv_label_set_text(s_elapsedLabel, "0:00");
+            lv_obj_center(s_elapsedLabel);
+            lv_label_set_text(s_flowLabel, "--");
+            lv_obj_center(s_flowLabel);
         }
     }
 }

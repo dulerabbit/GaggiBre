@@ -735,8 +735,18 @@ void DefaultUI::updateBoiler() {
 
     const float maxTemp = 160.0f;
     const float maxPressure = settings.getPressureScaling() > 0.0f ? settings.getPressureScaling() : 12.0f;
-    const float tempFrac = maxTemp > 0.0f ? static_cast<float>(controller->getCurrentTemp()) / maxTemp : 0.0f;
-    const float pressFrac = maxPressure > 0.0f ? pressure / maxPressure : 0.0f;
+    // Manual Brew: drive side ticks from setpoints so pressure ticks don't jiggle with live noise.
+    // Other screens keep live-driven ticks. Live sensors still update Manual Brew number labels.
+    float tempFrac;
+    float pressFrac;
+    if (ManualBrewScreen::isActive()) {
+        tempFrac = maxTemp > 0.0f ? static_cast<float>(controller->getTargetTemp()) / maxTemp : 0.0f;
+        const float targetBar = controller->getManualPressureTarget();
+        pressFrac = maxPressure > 0.0f ? targetBar / maxPressure : 0.0f;
+    } else {
+        tempFrac = maxTemp > 0.0f ? static_cast<float>(controller->getCurrentTemp()) / maxTemp : 0.0f;
+        pressFrac = maxPressure > 0.0f ? pressure / maxPressure : 0.0f;
+    }
 #if !GAGGIMATE_HAS_NATIVE_MANUAL_BREW
     WideLayout::update(tempFrac, pressFrac);
 #else
